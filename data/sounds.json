@@ -1,0 +1,104 @@
+[
+  {
+    "id": "place_bournemouth-city-centre-people-busy",
+    "kind": "place",
+    "label": "bournemouth city centre people busy",
+    "src": "audio/place_bournemouth-city-centre-people-busy.m4a"
+  },
+  {
+    "id": "place_city-centre-day-cafe-exterior-busy-crowd-madrid",
+    "kind": "place",
+    "label": "city centre day cafe exterior busy crowd madrid",
+    "src": "audio/place_city-centre-day-cafe-exterior-busy-crowd-madrid.m4a"
+  },
+  {
+    "id": "place_city-far-rumble-01",
+    "kind": "place",
+    "label": "city far rumble 01",
+    "src": "audio/place_city-far-rumble-01.m4a"
+  },
+  {
+    "id": "place_city-nyc-broadway-w79-street-mid-morning",
+    "kind": "place",
+    "label": "city nyc broadway w79 street mid morning",
+    "src": "audio/place_city-nyc-broadway-w79-street-mid-morning.m4a"
+  },
+  {
+    "id": "place_city-nyc-east-402-street-02nd-avenue-02",
+    "kind": "place",
+    "label": "city nyc east 402 street 02nd avenue 02",
+    "src": "audio/place_city-nyc-east-402-street-02nd-avenue-02.m4a"
+  },
+  {
+    "id": "place_city-nyc-lower-broadway-ambulance-siren-evening",
+    "kind": "place",
+    "label": "city nyc lower broadway ambulance siren evening",
+    "src": "audio/place_city-nyc-lower-broadway-ambulance-siren-evening.m4a"
+  },
+  {
+    "id": "place_city-nyc-wall-street-ext-01",
+    "kind": "place",
+    "label": "city nyc wall street ext 01",
+    "src": "audio/place_city-nyc-wall-street-ext-01.m4a"
+  },
+  {
+    "id": "place_city-quiet-night-01",
+    "kind": "place",
+    "label": "city quiet night 01",
+    "src": "audio/place_city-quiet-night-01.m4a"
+  },
+  {
+    "id": "place_city-skyline-heavy-distant-city-01",
+    "kind": "place",
+    "label": "city skyline heavy distant city 01",
+    "src": "audio/place_city-skyline-heavy-distant-city-01.m4a"
+  },
+  {
+    "id": "place_city-street-old-walla-lively-havana-cuba",
+    "kind": "place",
+    "label": "city street old walla lively havana cuba",
+    "src": "audio/place_city-street-old-walla-lively-havana-cuba.m4a"
+  },
+  {
+    "id": "place_city-street-pedestrians-fountain-night-brisbane-australia",
+    "kind": "place",
+    "label": "city street pedestrians fountain night brisbane australia",
+    "src": "audio/place_city-street-pedestrians-fountain-night-brisbane-australia.m4a"
+  },
+  {
+    "id": "place_city-street-pedestrians-pass-by-distant-city-hum-summer-albert-s",
+    "kind": "place",
+    "label": "city street pedestrians pass by distant city hum summer albert s",
+    "src": "audio/place_city-street-pedestrians-pass-by-distant-city-hum-summer-albert-s.m4a"
+  },
+  {
+    "id": "place_city-street-pedestrians",
+    "kind": "place",
+    "label": "city street pedestrians",
+    "src": "audio/place_city-street-pedestrians.m4a"
+  },
+  {
+    "id": "place_city-street-traffic-walla-senegal-africa",
+    "kind": "place",
+    "label": "city street traffic walla senegal africa",
+    "src": "audio/place_city-street-traffic-walla-senegal-africa.m4a"
+  },
+  {
+    "id": "place_city-underground-interior-walkway-busy-reflective-mexico-city",
+    "kind": "place",
+    "label": "city underground interior walkway busy reflective mexico city",
+    "src": "audio/place_city-underground-interior-walkway-busy-reflective-mexico-city.m4a"
+  },
+  {
+    "id": "place_dense-city-centre-crowd-people-passing",
+    "kind": "place",
+    "label": "dense city centre crowd people passing",
+    "src": "audio/place_dense-city-centre-crowd-people-passing.m4a"
+  },
+  {
+    "id": "place_main-street-city-centre-people-walking",
+    "kind": "place",
+    "label": "main street city centre people walking",
+    "src": "audio/place_main-street-city-centre-people-walking.m4a"
+  }
+]

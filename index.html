@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>spime</title>
+<link href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" rel="stylesheet" />
+<style>
+  html, body { margin: 0; height: 100%; background: #f4f2ec; }
+  #map { position: absolute; inset: 0; }
+
+  /* the hand-lettered title, traced from the original drawing */
+  #titleblock { position: absolute; top: 20px; left: 22px; z-index: 10; }
+  #title { display: block; width: 168px; pointer-events: none; user-select: none; }
+  #textlink {
+    display: block; margin: 15px 0 0 8px; padding: 0;
+    font: 600 12px/1 "Courier New", Courier, monospace;
+    letter-spacing: .08em; color: #2b2721;
+    background: none; border: 0; border-bottom: 1px solid #b9b2a2;
+    cursor: pointer;
+  }
+  #textlink:hover { border-bottom-color: #2b2721; }
+
+  /* the essay, as a sheet of paper over the map */
+  #sheet {
+    position: fixed; inset: 0; z-index: 50;
+    display: grid; place-items: center;
+    background: rgba(36, 33, 28, .30);
+  }
+  #sheet[hidden] { display: none; }
+  #sheetpaper {
+    position: relative; display: flex; flex-direction: column;
+    width: min(760px, 84vw); height: 84vh;
+    background: #fff; box-shadow: 0 20px 70px rgba(0,0,0,.25);
+  }
+  #sheettext {
+    overflow-y: auto; padding: 62px 64px 56px;
+    font: 400 14px/1.85 "Courier New", Courier, monospace;
+    color: #23201b;
+  }
+  #sheettext p { margin: 0 0 1.5em; }
+  #sheettext p:last-child { margin-bottom: 0; }
+  #sheetclose {
+    position: absolute; top: 12px; right: 14px; z-index: 1;
+    width: 28px; height: 28px; padding: 0; line-height: 1;
+    font: 400 17px/1 "Courier New", Courier, monospace;
+    color: #6d6656; background: #fff; border: 1px solid #ddd8cb;
+    border-radius: 2px; cursor: pointer;
+  }
+  #sheetclose:hover { color: #23201b; border-color: #8d8778; }
+
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="titleblock">
+  <img id="title" src="title/mymap.svg" alt="my map">
+  <button id="textlink">text</button>
+</div>
+
+<div id="sheet" hidden>
+  <div id="sheetpaper">
+    <button id="sheetclose" aria-label="close">&#215;</button>
+    <div id="sheettext"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/deck.gl@9.1.12/dist.min.js"></script>
+<script src="https://unpkg.com/tone@15.1.22/build/Tone.js"></script>
+<script src="score.js?v=1788901076"></script>
+<script src="grains.js?v=1788901076"></script>
+<script src="pool.js?v=1788901076"></script>
+<script src="audio.js?v=1788901076"></script>
+<script src="prose.js?v=1788901076"></script>
+<script src="inscribe.js?v=1788901076"></script>
+<script>
+// ---------------------------------------------------------------------------
+// A printed page.
+//
+// build.py has baked a `lit` value onto every building footprint and street
+// segment the trace touches and dropped everything it doesn't. Nothing here
+// computes proximity — this only draws what the file already says.
+//
+// There is no basemap. The look settled on hiding it entirely, so rather than
+// load a street style and then switch every layer of it off, the map is
+// created with a bare paper background and only the three layers this piece
+// actually uses. That removes a network dependency, a pile of unused tiles,
+// and the load-order problem that came with waiting on a remote style.
+// ---------------------------------------------------------------------------
+
+const PAPER = '#f4f2ec';
+
+const map = new maplibregl.Map({
+  container: 'map',
+  style: {
+    version: 8,
+    sources: {},
+    layers: [{ id: 'paper', type: 'background', paint: { 'background-color': PAPER } }],
+  },
+  center: [-73.9505, 40.6870],
+  zoom: 13.4,
+  pitch: 0,
+  bearing: 0,
+  // Capped where the letters are on the point of disappearing. Below the
+  // coarsest level's fade-in there is nothing on the page at all, and an
+  // empty sheet is not a view of anything.
+  minZoom: Inscription.CFG.levelAt[0] + Inscription.CFG.levelSpan * 0.5,
+  antialias: true,
+});
+map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+new ResizeObserver(() => map.resize()).observe(document.getElementById('map'));
+
+// Paper tones, darkening with visits. Nothing emits — the page just gets
+// dirtier where you were. Flat fills: at zero pitch an extrusion is only a
+// more expensive way to draw the same footprint.
+const LIT_COLOR = [
+  'interpolate', ['linear'], ['get', 'lit'],
+  0.00, '#f0eee7',
+  0.30, '#e9e6dd',
+  0.70, '#e0dcd1',
+  1.00, '#d6d1c3',
+];
+
+async function addLayers() {
+  // All three are fetched here rather than handed to MapLibre as URLs. The
+  // buildings have to be, since the density field and the inscription both
+  // read the features — but the other two are done the same way so that
+  // `cache: 'no-cache'` applies to all of them. Handing MapLibre a URL let
+  // the browser serve a stale copy after a rebuild, which looks exactly like
+  // the build having silently failed.
+  const get = u => fetch(u, { cache: 'no-cache' }).then(r => r.json());
+  const [buildings, streets, boroughs, subway] = await Promise.all([
+    get('data/buildings.geojson'),
+    get('data/streets.geojson'),
+    get('data/boroughs.geojson'),
+    get('data/subway.geojson').catch(() => null),
+  ]);
+
+  map.addSource('lit-city', { type: 'geojson', data: buildings });
+  map.addSource('lit-ways', { type: 'geojson', data: streets });
+  map.addSource('boro', { type: 'geojson', data: boroughs });
+
+  map.addLayer({
+    id: 'boroughs',
+    type: 'line',
+    source: 'boro',
+    paint: {
+      'line-color': '#a9a294',
+      'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.6, 16, 1.4],
+      'line-opacity': 0.8,
+    },
+  });
+
+  map.addLayer({
+    id: 'lit-buildings',
+    type: 'fill',
+    source: 'lit-city',
+    paint: { 'fill-color': LIT_COLOR, 'fill-opacity': 0.85 },
+  });
+
+  map.addLayer({
+    id: 'lit-streets',
+    type: 'line',
+    source: 'lit-ways',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      // printed lines, not light. one ink, one hairline weight, and density
+      // shows only as how firmly the pen was pressed.
+      'line-color': '#8d8778',
+      'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.4, 17, 1.1],
+      'line-opacity': ['interpolate', ['linear'], ['get', 'lit'], 0.0, 0.16, 1.0, 0.42],
+    },
+  });
+
+  return { buildings, boroughs, subway };
+}
+
+// ---------------------------------------------------------------------------
+// The writing
+// ---------------------------------------------------------------------------
+
+const overlay = new deck.MapboxOverlay({ interleaved: false, layers: [] });
+let clock = 0;
+
+// Prose first so the node letters sit on top of it — the field is the ground
+// the mass sits in, not something laid over it.
+const setLayers = () => overlay.setProps({
+  layers: [Prose.layer(map, clock), ...Inscription.layer(map, clock)].filter(Boolean),
+});
+
+map.once('style.load', async () => {
+  map.addControl(overlay);
+  const { buildings, boroughs, subway } = await addLayers();
+
+  frameTo();
+  Density.build(buildings);
+  const essay = await fetch('text/essay.txt', { cache: 'no-cache' }).then(r => r.text());
+  // the same text the map is made of, held for the reading sheet
+  document.getElementById('sheettext').innerHTML = essay
+    .trim().split(/\n\s*\n/)
+    .map(par => `<p>${par.trim().replace(/</g, '&lt;')}</p>`).join('');
+  Prose.build(boroughs, essay, buildings);
+  Inscription.build(buildings, essay, subway);
+
+  (function animate(ms) {
+    requestAnimationFrame(animate);
+    clock = ms / 1000;
+    setLayers();
+  })(0);
+});
+
+// The opening frame.
+//
+// Not the whole city and not the trace either. Fitting all five boroughs put
+// Staten Island and the far Bronx on the page for the sake of completeness and
+// pushed everything you actually did into a corner; fitting the trace cropped
+// so tight it read as a detail of something unseen. This is set by hand: the
+// bottom of Brooklyn is cut away because you were never down there, and the
+// west tip of Manhattan sits low and left, so the piece opens looking north
+// and east across the ground it uses. Nodes falling outside the frame is the
+// point — there is more here than one view holds.
+const OPENING = [[-74.05, 40.63], [-73.82, 40.85]];
+
+function frameTo() {
+  map.fitBounds(OPENING, { padding: 0, duration: 0 });
+}
+
+// ---------------------------------------------------------------------------
+// Sound. Listener = where the map is looking; centre gives position, zoom
+// gives altitude, and both are just distance as far as the mix is concerned.
+// ---------------------------------------------------------------------------
+
+const listener = () => {
+  const c = map.getCenter();
+  return { lng: c.lng, lat: c.lat, zoom: map.getZoom() };
+};
+
+setInterval(() => {
+  if (!Audio.isStarted()) return;
+  const l = listener();
+  Audio.update(l);
+  Pool.update({ zoom: l.zoom, density: Density.at(l.lng, l.lat) });
+}, 120);
+
+// The reading sheet.
+(() => {
+  const sheet = document.getElementById('sheet');
+  const open = () => { sheet.hidden = false; document.getElementById('sheettext').scrollTop = 0; };
+  const shut = () => { sheet.hidden = true; };
+  document.getElementById('textlink').onclick = open;
+  document.getElementById('sheetclose').onclick = shut;
+  // clicking the surround closes it; clicking the paper itself does not
+  sheet.onclick = e => { if (e.target === sheet) shut(); };
+  window.addEventListener('keydown', e => { if (e.key === 'Escape') shut(); });
+})();
+
+// Sound starts on the first touch of the page rather than behind a button.
+// Browsers will not open an audio context without a user gesture, so this
+// waits for one — but any gesture will do, and moving the map is one. Wheel
+// and trackpad scroll do NOT count as activation in Chrome, so those are not
+// listened for; pointer and key are what actually unlock it.
+(() => {
+  let armed = true;
+  const begin = async () => {
+    if (!armed) return;
+    armed = false;
+    for (const ev of ['pointerdown', 'keydown', 'touchstart']) {
+      window.removeEventListener(ev, begin);
+    }
+    try {
+      await Audio.start();
+      Audio.update(listener());
+    } catch (e) {
+      console.warn('audio could not start', e);
+      armed = true;
+    }
+  };
+  for (const ev of ['pointerdown', 'keydown', 'touchstart']) {
+    window.addEventListener(ev, begin, { passive: true });
+  }
+})();
+</script>
+</body>
+</html>

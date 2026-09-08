@@ -1,0 +1,23 @@
+# Raw Overpass dumps — 29 MB, and fetch.py regenerates them on demand.
+data/osm/
+
+# Unsimplified source boundaries; build.py turns these into boroughs.geojson.
+data/boroughs_raw.geojson
+
+# Personal movement data. The site renders from the baked geojson and never
+# reads this, so there is no reason for it to leave the machine.
+data/trace.json
+
+# Intermediates from the title trace.
+title/mymap.pbm
+title/preview.html
+
+# Synthetic test tones from before the real recordings existed.
+audio/*.wav
+
+# Superseded: photographic texturing, replaced by the prose field.
+texture.js
+materials/
+
+__pycache__/
+.DS_Store
