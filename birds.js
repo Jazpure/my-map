@@ -45,10 +45,21 @@ const Birds = (() => {
     grow: 0.5,
     growClamp: [0.30, 3.4],
 
-    top:     { zoom: [9.6, 15.2], spread: 1.6, clear: [0.46, 0.72],
+    top:     { zoom: [9.6, 14.0], spread: 1.6, clear: [0.46, 0.72],
                speed: [0.200, 0.410], flock: [1, 3] },
-    quarter: { zoom: [14.6, 17.9], spread: 1.3, clear: [0.74, 1.02],
+    quarter: { zoom: [12.6, 14.0], spread: 1.3, clear: [0.74, 1.02],
                speed: [0.145, 0.290], flock: [1, 2] },
+
+    // Coming down onto the city, the birds thin out and then stop. Below the
+    // first figure the sky is as busy as it is at the widest view; between the
+    // two the gaps between flights stretch and each flock fades; above the
+    // second there are none at all. The numbers are the piece's own: 13.1 is
+    // where the second-finest level of letters starts to come in, and 14.3 is
+    // two full zoom levels short of the atomising at 16.3 — so the birds are
+    // long gone before the writing begins to break apart. Fading rather than
+    // cutting matters, because a flock caught mid-arc by a zoom would
+    // otherwise vanish between one frame and the next.
+    quiet: [13.1, 14.3],
 
     maxTop: 3,          // top-view flocks alive at once
     maxQuarter: 1,      // three-quarter flocks alive at once
@@ -74,6 +85,19 @@ const Birds = (() => {
   let dpr = 1;
   const rnd = (a, b) => a + Math.random() * (b - a);
   const pick = arr => arr[(Math.random() * arr.length) | 0];
+
+  // How much of a sky there is at this zoom: 1 out at the far and middle
+  // views, easing to 0 as the city comes up. It multiplies two separate
+  // things — how strongly a flock draws, and how long the wait is before the
+  // next one — so the birds get both fainter and rarer on the way in rather
+  // than simply dimming.
+  function presence(z) {
+    const [a, b] = CFG.quiet;
+    if (z <= a) return 1;
+    if (z >= b) return 0;
+    const t = 1 - (z - a) / (b - a);
+    return t * t * (3 - 2 * t);
+  }
 
   // --- setup --------------------------------------------------------------
 
@@ -231,6 +255,7 @@ const Birds = (() => {
     ctx.clearRect(0, 0, w, h);
 
     const zoom = zoomNow = map.getZoom();
+    const sky = presence(zoom);
     let flew = 0;
 
     // Draw the higher birds last so they sit over the lower ones. Altitude is
@@ -247,9 +272,12 @@ const Birds = (() => {
 
       if (f.t > 1.15) {
         const gap = f.view === 'top' ? CFG.gapTop : CFG.gapQuarter;
+        // the wait stretches as the sky empties, so flights get rarer on the
+        // way in rather than all stopping together at one zoom
+        const wait = rnd(gap[0], gap[1]) / Math.max(0.06, sky);
         flocks[i] = (f.view === 'quarter' && Math.random() > CFG.quarterOdds)
-          ? spawn('quarter', rnd(gap[0], gap[1]) * 2)
-          : spawn(f.view, rnd(gap[0], gap[1]));
+          ? spawn('quarter', wait * 2)
+          : spawn(f.view, wait);
         continue;
       }
 
@@ -265,7 +293,7 @@ const Birds = (() => {
                              Math.pow(2, (zoom - f.altitude) * CFG.grow)));
 
       const edge = Math.min(1, f.t / 0.05, (1.15 - f.t) / 0.08);
-      const alpha = CFG.alpha * near * Math.max(0, edge);
+      const alpha = CFG.alpha * near * Math.max(0, edge) * sky;
       if (alpha <= 0.01) continue;
 
       // work out where every bird in the flock sits, and the box they cover
@@ -322,13 +350,15 @@ const Birds = (() => {
     }
     ctx.globalAlpha = 1;
 
-    // Something is always in the air. The gaps between flights are random and
-    // the arcs are long, so left alone the page goes quiet for a while at a
-    // time; if it has been empty for a moment, whichever flock is nearest to
-    // ready is put up now. Only the top views are used for this — the
-    // three-quarter birds are meant to be rare and are left rare.
+    // Something is always in the air — while there is a sky to be in. The gaps
+    // between flights are random and the arcs are long, so left alone the page
+    // goes quiet for a while at a time; if it has been empty for a moment,
+    // whichever flock is nearest to ready is put up now. Only the top views
+    // are used for this — the three-quarter birds are meant to be rare and are
+    // left rare. Close in, this stops: an empty sky there is the point, not a
+    // gap to be filled.
     lastFlew = flew;
-    if (flew) {
+    if (flew || sky < 0.6) {
       idle = 0;
     } else if ((idle += dt) > CFG.idle) {
       let best = -1, soonest = Infinity;
@@ -347,6 +377,7 @@ const Birds = (() => {
 
   const state = () => ({
     onScreen: lastFlew,
+    sky: +presence(zoomNow).toFixed(3),
     flocks: flocks.map(f => ({ view: f.view, n: f.birds.length,
                                altitude: +f.altitude.toFixed(2),
                                t: +f.t.toFixed(2), wait: +f.wait.toFixed(1),
