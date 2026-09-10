@@ -18,9 +18,28 @@
 const Audio = (() => {
 
   const S = window.SCORE;
-  let started = false;
+  let started = false;      // the graph exists
+  let ready = false;        // …and the pool is playing through it
   let master, reverb;
   const layers = [];
+
+  // The browser's own view of things, which is the only one worth trusting: a
+  // context can be suspended out from under the page — the tab sleeps, the
+  // system takes the audio device — long after the engine was built.
+  const rawContext = () =>
+    (window.Tone && Tone.getContext) ? Tone.getContext().rawContext : null;
+  const isRunning = () => {
+    const c = rawContext();
+    return started && ready && !!c && c.state === 'running';
+  };
+
+  async function resume() {
+    const c = rawContext();
+    if (c && c.state !== 'running') {
+      try { await c.resume(); } catch (e) { /* needs a fresh gesture */ }
+    }
+    return isRunning();
+  }
 
   // --- curve reading ------------------------------------------------------
 
@@ -97,11 +116,40 @@ const Audio = (() => {
 
   // --- construction -------------------------------------------------------
 
+  // Safe to call again. It used to be a one-shot that set `started` before it
+  // had built anything: if the build then failed — a gesture that outlived its
+  // own activation window while the main thread was busy with the inscription,
+  // a stalled request for the first clip — the page was left reporting that
+  // sound had started while nothing was connected, and there was no second
+  // attempt. Now the flag is set once the graph exists, a failed build is torn
+  // back down so the next attempt is a clean one, and calling this on an
+  // engine that is already up just resumes the context.
   async function start() {
-    if (started) return;
     await Tone.start();
-    started = true;
+    if (started) { await resume(); return; }
 
+    try {
+      await build();
+    } catch (e) {
+      teardown();
+      throw e;
+    }
+  }
+
+  function teardown() {
+    for (const L of layers) {
+      try { L.source && L.source.parts && L.source.parts.forEach(p => p.dispose()); } catch (e) {}
+      try { L.source && L.source.node.dispose(); } catch (e) {}
+      for (const n of ['filter', 'gain', 'send']) { try { L[n].dispose(); } catch (e) {} }
+    }
+    layers.length = 0;
+    try { reverb && reverb.dispose(); } catch (e) {}
+    try { master && master.dispose(); } catch (e) {}
+    master = reverb = null;
+    started = ready = false;
+  }
+
+  async function build() {
     master = new Tone.Gain(S.master).toDestination();
     reverb = new Tone.Reverb({ decay: 7.5, preDelay: 0.03, wet: 1 });
     reverb.connect(master);
@@ -128,7 +176,9 @@ const Audio = (() => {
       await attach(L, cfg.src);
     }
 
+    started = true;
     const n = await Pool.init(master, reverb);
+    ready = true;
     buildPanel();
     return n;
   }
@@ -330,5 +380,6 @@ const Audio = (() => {
     return { type: 'FeatureCollection', features };
   }
 
-  return { start, update, paint, exportScore, reachGeoJSON, isStarted: () => started };
+  return { start, resume, update, paint, exportScore, reachGeoJSON,
+           isStarted: () => started, isRunning };
 })();

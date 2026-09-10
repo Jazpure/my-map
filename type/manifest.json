@@ -1,0 +1,552 @@
+[
+ {
+  "char": "A",
+  "set": "upper",
+  "file": "upper_065.pbm",
+  "row": 0,
+  "top": 140,
+  "bottom": 333,
+  "w": 163,
+  "h": 193
+ },
+ {
+  "char": "B",
+  "set": "upper",
+  "file": "upper_066.pbm",
+  "row": 0,
+  "top": 134,
+  "bottom": 294,
+  "w": 131,
+  "h": 160
+ },
+ {
+  "char": "C",
+  "set": "upper",
+  "file": "upper_067.pbm",
+  "row": 0,
+  "top": 183,
+  "bottom": 353,
+  "w": 118,
+  "h": 170
+ },
+ {
+  "char": "D",
+  "set": "upper",
+  "file": "upper_068.pbm",
+  "row": 0,
+  "top": 145,
+  "bottom": 332,
+  "w": 133,
+  "h": 187
+ },
+ {
+  "char": "E",
+  "set": "upper",
+  "file": "upper_069.pbm",
+  "row": 0,
+  "top": 157,
+  "bottom": 339,
+  "w": 134,
+  "h": 182
+ },
+ {
+  "char": "F",
+  "set": "upper",
+  "file": "upper_070.pbm",
+  "row": 0,
+  "top": 144,
+  "bottom": 337,
+  "w": 121,
+  "h": 193
+ },
+ {
+  "char": "G",
+  "set": "upper",
+  "file": "upper_071.pbm",
+  "row": 0,
+  "top": 138,
+  "bottom": 315,
+  "w": 136,
+  "h": 177
+ },
+ {
+  "char": "H",
+  "set": "upper",
+  "file": "upper_072.pbm",
+  "row": 0,
+  "top": 131,
+  "bottom": 321,
+  "w": 138,
+  "h": 190
+ },
+ {
+  "char": "I",
+  "set": "upper",
+  "file": "upper_073.pbm",
+  "row": 0,
+  "top": 139,
+  "bottom": 308,
+  "w": 130,
+  "h": 169
+ },
+ {
+  "char": "J",
+  "set": "upper",
+  "file": "upper_074.pbm",
+  "row": 0,
+  "top": 140,
+  "bottom": 319,
+  "w": 138,
+  "h": 179
+ },
+ {
+  "char": "K",
+  "set": "upper",
+  "file": "upper_075.pbm",
+  "row": 0,
+  "top": 145,
+  "bottom": 320,
+  "w": 153,
+  "h": 175
+ },
+ {
+  "char": "L",
+  "set": "upper",
+  "file": "upper_076.pbm",
+  "row": 1,
+  "top": 351,
+  "bottom": 524,
+  "w": 131,
+  "h": 173
+ },
+ {
+  "char": "M",
+  "set": "upper",
+  "file": "upper_077.pbm",
+  "row": 1,
+  "top": 358,
+  "bottom": 517,
+  "w": 147,
+  "h": 159
+ },
+ {
+  "char": "N",
+  "set": "upper",
+  "file": "upper_078.pbm",
+  "row": 1,
+  "top": 378,
+  "bottom": 519,
+  "w": 109,
+  "h": 141
+ },
+ {
+  "char": "O",
+  "set": "upper",
+  "file": "upper_079.pbm",
+  "row": 1,
+  "top": 354,
+  "bottom": 499,
+  "w": 97,
+  "h": 145
+ },
+ {
+  "char": "P",
+  "set": "upper",
+  "file": "upper_080.pbm",
+  "row": 1,
+  "top": 341,
+  "bottom": 518,
+  "w": 117,
+  "h": 177
+ },
+ {
+  "char": "Q",
+  "set": "upper",
+  "file": "upper_081.pbm",
+  "row": 1,
+  "top": 341,
+  "bottom": 513,
+  "w": 115,
+  "h": 172
+ },
+ {
+  "char": "R",
+  "set": "upper",
+  "file": "upper_082.pbm",
+  "row": 1,
+  "top": 350,
+  "bottom": 517,
+  "w": 136,
+  "h": 167
+ },
+ {
+  "char": "S",
+  "set": "upper",
+  "file": "upper_083.pbm",
+  "row": 1,
+  "top": 345,
+  "bottom": 514,
+  "w": 128,
+  "h": 169
+ },
+ {
+  "char": "T",
+  "set": "upper",
+  "file": "upper_084.pbm",
+  "row": 1,
+  "top": 340,
+  "bottom": 500,
+  "w": 122,
+  "h": 160
+ },
+ {
+  "char": "U",
+  "set": "upper",
+  "file": "upper_085.pbm",
+  "row": 1,
+  "top": 349,
+  "bottom": 499,
+  "w": 123,
+  "h": 150
+ },
+ {
+  "char": "V",
+  "set": "upper",
+  "file": "upper_086.pbm",
+  "row": 1,
+  "top": 351,
+  "bottom": 509,
+  "w": 141,
+  "h": 158
+ },
+ {
+  "char": "W",
+  "set": "upper",
+  "file": "upper_087.pbm",
+  "row": 2,
+  "top": 537,
+  "bottom": 683,
+  "w": 160,
+  "h": 146
+ },
+ {
+  "char": "X",
+  "set": "upper",
+  "file": "upper_088.pbm",
+  "row": 2,
+  "top": 528,
+  "bottom": 677,
+  "w": 129,
+  "h": 149
+ },
+ {
+  "char": "Y",
+  "set": "upper",
+  "file": "upper_089.pbm",
+  "row": 2,
+  "top": 531,
+  "bottom": 695,
+  "w": 122,
+  "h": 164
+ },
+ {
+  "char": "Z",
+  "set": "upper",
+  "file": "upper_090.pbm",
+  "row": 2,
+  "top": 531,
+  "bottom": 680,
+  "w": 112,
+  "h": 149
+ },
+ {
+  "char": "a",
+  "set": "lower",
+  "file": "lower_097.pbm",
+  "row": 3,
+  "top": 717,
+  "bottom": 844,
+  "w": 105,
+  "h": 127
+ },
+ {
+  "char": "b",
+  "set": "lower",
+  "file": "lower_098.pbm",
+  "row": 3,
+  "top": 703,
+  "bottom": 855,
+  "w": 113,
+  "h": 152
+ },
+ {
+  "char": "c",
+  "set": "lower",
+  "file": "lower_099.pbm",
+  "row": 3,
+  "top": 742,
+  "bottom": 859,
+  "w": 94,
+  "h": 117
+ },
+ {
+  "char": "e",
+  "set": "lower",
+  "file": "lower_101.pbm",
+  "row": 3,
+  "top": 746,
+  "bottom": 850,
+  "w": 98,
+  "h": 104
+ },
+ {
+  "char": "f",
+  "set": "lower",
+  "file": "lower_102.pbm",
+  "row": 3,
+  "top": 721,
+  "bottom": 859,
+  "w": 98,
+  "h": 138
+ },
+ {
+  "char": "g",
+  "set": "lower",
+  "file": "lower_103.pbm",
+  "row": 3,
+  "top": 730,
+  "bottom": 867,
+  "w": 116,
+  "h": 137
+ },
+ {
+  "char": "h",
+  "set": "lower",
+  "file": "lower_104.pbm",
+  "row": 3,
+  "top": 730,
+  "bottom": 861,
+  "w": 98,
+  "h": 131
+ },
+ {
+  "char": "i",
+  "set": "lower",
+  "file": "lower_105.pbm",
+  "row": 3,
+  "top": 726,
+  "bottom": 866,
+  "w": 85,
+  "h": 140
+ },
+ {
+  "char": "j",
+  "set": "lower",
+  "file": "lower_106.pbm",
+  "row": 3,
+  "top": 693,
+  "bottom": 872,
+  "w": 111,
+  "h": 179
+ },
+ {
+  "char": "k",
+  "set": "lower",
+  "file": "lower_107.pbm",
+  "row": 3,
+  "top": 722,
+  "bottom": 875,
+  "w": 115,
+  "h": 153
+ },
+ {
+  "char": "l",
+  "set": "lower",
+  "file": "lower_108.pbm",
+  "row": 4,
+  "top": 899,
+  "bottom": 1046,
+  "w": 96,
+  "h": 147
+ },
+ {
+  "char": "m",
+  "set": "lower",
+  "file": "lower_109.pbm",
+  "row": 4,
+  "top": 911,
+  "bottom": 1047,
+  "w": 156,
+  "h": 136
+ },
+ {
+  "char": "n",
+  "set": "lower",
+  "file": "lower_110.pbm",
+  "row": 4,
+  "top": 906,
+  "bottom": 1045,
+  "w": 121,
+  "h": 139
+ },
+ {
+  "char": "o",
+  "set": "lower",
+  "file": "lower_111.pbm",
+  "row": 4,
+  "top": 926,
+  "bottom": 1028,
+  "w": 96,
+  "h": 102
+ },
+ {
+  "char": "p",
+  "set": "lower",
+  "file": "lower_112.pbm",
+  "row": 4,
+  "top": 901,
+  "bottom": 1050,
+  "w": 106,
+  "h": 149
+ },
+ {
+  "char": "r",
+  "set": "lower",
+  "file": "lower_114.pbm",
+  "row": 4,
+  "top": 934,
+  "bottom": 1052,
+  "w": 110,
+  "h": 118
+ },
+ {
+  "char": "s",
+  "set": "lower",
+  "file": "lower_115.pbm",
+  "row": 4,
+  "top": 928,
+  "bottom": 1038,
+  "w": 96,
+  "h": 110
+ },
+ {
+  "char": "t",
+  "set": "lower",
+  "file": "lower_116.pbm",
+  "row": 4,
+  "top": 896,
+  "bottom": 1029,
+  "w": 77,
+  "h": 133
+ },
+ {
+  "char": "u",
+  "set": "lower",
+  "file": "lower_117.pbm",
+  "row": 4,
+  "top": 915,
+  "bottom": 1044,
+  "w": 132,
+  "h": 129
+ },
+ {
+  "char": "v",
+  "set": "lower",
+  "file": "lower_118.pbm",
+  "row": 4,
+  "top": 918,
+  "bottom": 1031,
+  "w": 121,
+  "h": 113
+ },
+ {
+  "char": "w",
+  "set": "lower",
+  "file": "lower_119.pbm",
+  "row": 5,
+  "top": 1103,
+  "bottom": 1226,
+  "w": 143,
+  "h": 123
+ },
+ {
+  "char": "y",
+  "set": "lower",
+  "file": "lower_121.pbm",
+  "row": 5,
+  "top": 1078,
+  "bottom": 1208,
+  "w": 145,
+  "h": 130
+ },
+ {
+  "char": "z",
+  "set": "lower",
+  "file": "lower_122.pbm",
+  "row": 5,
+  "top": 1086,
+  "bottom": 1214,
+  "w": 115,
+  "h": 128
+ },
+ {
+  "char": ".",
+  "set": "punct",
+  "file": "punct_046.pbm",
+  "row": 6,
+  "top": 1360,
+  "bottom": 1387,
+  "w": 27,
+  "h": 27
+ },
+ {
+  "char": ",",
+  "set": "punct",
+  "file": "punct_044.pbm",
+  "row": 6,
+  "top": 1354,
+  "bottom": 1391,
+  "w": 24,
+  "h": 37
+ },
+ {
+  "char": "?",
+  "set": "punct",
+  "file": "punct_063.pbm",
+  "row": 6,
+  "top": 1256,
+  "bottom": 1384,
+  "w": 73,
+  "h": 128
+ },
+ {
+  "char": "!",
+  "set": "punct",
+  "file": "punct_033.pbm",
+  "row": 6,
+  "top": 1260,
+  "bottom": 1391,
+  "w": 27,
+  "h": 131
+ },
+ {
+  "char": ":",
+  "set": "punct",
+  "file": "punct_058.pbm",
+  "row": 6,
+  "top": 1309,
+  "bottom": 1390,
+  "w": 28,
+  "h": 81
+ },
+ {
+  "char": ";",
+  "set": "punct",
+  "file": "punct_059.pbm",
+  "row": 6,
+  "top": 1308,
+  "bottom": 1402,
+  "w": 32,
+  "h": 94
+ }
+]

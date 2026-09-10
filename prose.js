@@ -89,6 +89,8 @@ const Prose = (() => {
     speed: 0.55,
     tick: 0.22,        // seconds between prose repositions
 
+    handShare: 0.40,   // share set in the drawn type rather than Courier
+
     budget: 140000,
   };
 
@@ -200,7 +202,8 @@ const Prose = (() => {
   }
 
   function build(boroughs, text, buildings) {
-    const { mapping } = Inscription.glyphs();
+    const { mapping, HAND } = Inscription.glyphs();
+    const drawn = c => Math.random() < CFG.handShare && !!mapping[c + HAND];
     Field.build(buildings);
 
     const chars = [...text.replace(/\s+/g, ' ')].filter(c => mapping[c] || c === ' ');
@@ -230,7 +233,7 @@ const Prose = (() => {
     const dLng = CFG.charStep / mx;
     const dLat = CFG.lineStep / my;
 
-    const lng = [], lat = [], ch = [], jit = [];
+    const lng = [], lat = [], ch = [], jit = [], hnd = [];
     let ci = 0;
 
     // Scanline fill, top to bottom so the text reads down the page the way it
@@ -253,6 +256,7 @@ const Prose = (() => {
           lat.push(y);
           ch.push(c);
           jit.push(0.62 + hash(lng.length * 7) * 0.85);
+          hnd.push(drawn(c) ? 1 : 0);
         }
       }
     }
@@ -278,7 +282,7 @@ const Prose = (() => {
     P = {
       n: ch.length,
       lng: new Float64Array(lng), lat: new Float64Array(lat),
-      ch, jit: new Float32Array(jit),
+      ch, jit: new Float32Array(jit), hnd: new Uint8Array(hnd),
       g: gv, gx: gdx, gy: gdy,
       mx, my,
     };
@@ -369,7 +373,7 @@ const Prose = (() => {
       sizeUnits: 'meters',
       sizeMinPixels: CFG.sizeMinPx,
       sizeMaxPixels: CFG.sizeMaxPx,
-      getIcon: i => P.ch[i],
+      getIcon: i => (P.hnd[i] ? P.ch[i] + Inscription.glyphs().HAND : P.ch[i]),
       getPosition: place,
       getSize: i => {
         const g = P.g[i];

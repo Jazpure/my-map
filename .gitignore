@@ -21,3 +21,6 @@ materials/
 
 __pycache__/
 .DS_Store
+
+# Raw masks written alongside the traced birds; extract.py regenerates them.
+birds/svg/*.npy

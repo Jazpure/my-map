@@ -38,6 +38,11 @@ const Inscription = (() => {
   const PRIMARIES = [[214, 46, 38], [240, 196, 32], [28, 62, 168]];
 
   const CFG = {
+    // Share of letters set in the drawn type rather than Courier. Chosen per
+    // letter at build time, so a given letter keeps its face for the session
+    // and nothing shimmers between the two.
+    handShare: 0.40,
+
     seedMin: 1,        // letters seeded by a barely-visited building
     seedMax: 34,       // extra letters at full density
     spread: 21,        // metres a building scatters its letters across
@@ -137,14 +142,33 @@ const Inscription = (() => {
   let L = null;
   let index = new Map();
   let atlas = null, mapping = null;
+  let hand = null;                 // { sheet, meta } once loaded
+  const HAND = '\u0001';           // suffix marking a hand-drawn variant
   const CELL = 0.0022;
   const key = (a, b) => a + ',' + b;
   const clamp01 = x => Math.max(0, Math.min(1, x));
 
+  // Measure where Courier actually puts its ink inside a cell, so the drawn
+  // glyphs can be set on the same baseline at the same cap and x heights.
+  // Guessing these from font size alone does not work — canvas 'middle'
+  // baseline is the middle of the em, not of the letter.
+  function metricsOf(ctx, ch) {
+    ctx.clearRect(0, 0, BOX, BOX);
+    ctx.fillText(ch, BOX / 2, BOX / 2 + 1);
+    const d = ctx.getImageData(0, 0, BOX, BOX).data;
+    let top = BOX, bottom = 0;
+    for (let y = 0; y < BOX; y++) {
+      for (let x = 0; x < BOX; x++) {
+        if (d[(y * BOX + x) * 4 + 3] > 40) { if (y < top) top = y; if (y > bottom) bottom = y; }
+      }
+    }
+    return { top, bottom };
+  }
+
   function buildAtlas() {
     const c = document.createElement('canvas');
     c.width = BOX * GLYPHS.length;
-    c.height = BOX;
+    c.height = BOX * 2;            // row 0 Courier, row 1 the drawn type
     const g = c.getContext('2d');
     g.fillStyle = '#fff';
     g.textAlign = 'center';
@@ -158,7 +182,58 @@ const Inscription = (() => {
         anchorX: BOX / 2, anchorY: BOX / 2, mask: true,
       };
     }
+
+    if (hand) {
+      // one scratch cell, same font settings, to read Courier's own metrics
+      const s = document.createElement('canvas');
+      s.width = s.height = BOX;
+      const sg = s.getContext('2d', { willReadFrequently: true });
+      sg.fillStyle = '#fff';
+      sg.textAlign = 'center';
+      sg.textBaseline = 'middle';
+      sg.font = g.font;
+      const H = metricsOf(sg, 'H');
+      const X = metricsOf(sg, 'x');
+      const base = H.bottom + 1;
+      const REF = { upper: base - H.top, lower: base - X.top };
+      REF.punct = REF.lower;
+
+      const M = hand.meta;
+      for (let i = 0; i < GLYPHS.length; i++) {
+        const ch = GLYPHS[i];
+        const e = M.glyphs[ch];
+        if (!e) continue;                       // no drawn form; keeps Courier
+        const k = (REF[e.set] || REF.lower) / M.ref;
+        // the sprite's own baseline lands on Courier's baseline, and the cell
+        // is centred, so a swapped letter occupies the same ink box
+        g.drawImage(hand.sheet, e.x, e.y, e.w, e.h,
+                    i * BOX + BOX / 2 - (e.w * k) / 2,
+                    BOX + base - M.baseline * k,
+                    e.w * k, e.h * k);
+        mapping[ch + HAND] = {
+          x: i * BOX, y: BOX, width: BOX, height: BOX,
+          anchorX: BOX / 2, anchorY: BOX / 2, mask: true,
+        };
+      }
+    }
     atlas = c;
+  }
+
+  // Must run before build(); the atlas is assembled once and the drawn cells
+  // have to be in it by then.
+  async function loadHand(sheetUrl, metaUrl) {
+    const [sheet, meta] = await Promise.all([
+      new Promise((res, rej) => {
+        const im = new Image();
+        im.onload = () => res(im);
+        im.onerror = rej;
+        im.src = sheetUrl;
+      }),
+      fetch(metaUrl, { cache: 'no-cache' }).then(r => r.json()),
+    ]);
+    hand = { sheet, meta };
+    atlas = null;                  // force a rebuild that includes the type
+    return Object.keys(meta.glyphs).length;
   }
 
   // --- placement ----------------------------------------------------------
@@ -171,13 +246,17 @@ const Inscription = (() => {
     const chars = [...text.replace(/\s+/g, ' ')].filter(ch => mapping[ch]);
     let ci = 0;
 
+    // a letter is set in the drawn type if one was drawn for it — the
+    // specimen has no apostrophe or hyphen, so those always stay Courier
+    const drawn = c => Math.random() < CFG.handShare && !!mapping[c + HAND];
+
     let lat0 = 0;
     for (const f of feats) lat0 += f.geometry.coordinates[0][0][1];
     lat0 /= feats.length;
     const mx = 111320 * Math.cos(lat0 * Math.PI / 180);
     const my = 110540;
 
-    const lng = [], lat = [], ch = [], col = [], ang = [], lit = [], ph = [], lvl = [], ox = [], oy = [], dep = [], jit = [], link = [];
+    const lng = [], lat = [], ch = [], col = [], ang = [], lit = [], ph = [], lvl = [], ox = [], oy = [], dep = [], jit = [], link = [], hnd = [];
 
     for (const f of feats) {
       const ring = f.geometry.coordinates[0];
@@ -215,6 +294,7 @@ const Inscription = (() => {
         dep.push(orr);          // 0 at the core, 1 at the outskirts
         jit.push(CFG.jitterLo + Math.random() * (CFG.jitterHi - CFG.jitterLo));
         link.push(0);
+        hnd.push(drawn(ch[ch.length - 1]) ? 1 : 0);
         ang.push((Math.random() - 0.5) * 44);   // loose, still readable
         lit.push(v);
         ph.push(Math.random() * Math.PI * 2);
@@ -264,6 +344,7 @@ const Inscription = (() => {
             dep.push(orr);
             jit.push(CFG.jitterLo + Math.random() * (CFG.jitterHi - CFG.jitterLo));
             link.push(1);
+            hnd.push(drawn(ch[ch.length - 1]) ? 1 : 0);
           }
           since += len - pos;
         }
@@ -280,6 +361,7 @@ const Inscription = (() => {
       ox: new Float32Array(ox), oy: new Float32Array(oy),
       dep: new Float32Array(dep),
       jit: new Float32Array(jit), link: new Uint8Array(link),
+      hnd: new Uint8Array(hnd),
       mx, my,
     };
 
@@ -421,7 +503,7 @@ const Inscription = (() => {
         iconMapping: mapping,
         billboard: false,
         sizeUnits: 'pixels',
-        getIcon: i => L.ch[i],
+        getIcon: i => (L.hnd[i] ? L.ch[i] + HAND : L.ch[i]),
         // the field shrinks as a whole, and each level sits at its own
         // relative weight within it
         getSize: i => base * CFG.levelScale[L.lvl[i]] * sizeAt(i) * L.jit[i]
@@ -495,8 +577,8 @@ const Inscription = (() => {
   // caught in the nodes.
   function glyphs() {
     if (!atlas) buildAtlas();
-    return { atlas, mapping, GLYPHS, PRIMARIES };
+    return { atlas, mapping, GLYPHS, PRIMARIES, HAND, hasHand: c => !!(hand && hand.meta.glyphs[c]) };
   }
 
-  return { build, layer, bands, levelAlpha, baseSize, scatterAt, glyphs, CFG, stats: () => L, drawn: () => lastCount };
+  return { build, layer, bands, levelAlpha, baseSize, scatterAt, glyphs, loadHand, CFG, stats: () => L, drawn: () => lastCount };
 })();

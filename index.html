@@ -9,6 +9,9 @@
   html, body { margin: 0; height: 100%; background: #f4f2ec; }
   #map { position: absolute; inset: 0; }
 
+  /* birds fly over the page, not with it — screen space, never interactive */
+  #birds { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+
   /* the hand-lettered title, traced from the original drawing */
   #titleblock { position: absolute; top: 20px; left: 22px; z-index: 10; }
   #title { display: block; width: 168px; pointer-events: none; user-select: none; }
@@ -68,12 +71,13 @@
 <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/deck.gl@9.1.12/dist.min.js"></script>
 <script src="https://unpkg.com/tone@15.1.22/build/Tone.js"></script>
-<script src="score.js?v=1788901076"></script>
-<script src="grains.js?v=1788901076"></script>
-<script src="pool.js?v=1788901076"></script>
-<script src="audio.js?v=1788901076"></script>
-<script src="prose.js?v=1788901076"></script>
-<script src="inscribe.js?v=1788901076"></script>
+<script src="score.js?v=1789023315"></script>
+<script src="grains.js?v=1789023315"></script>
+<script src="pool.js?v=1789023315"></script>
+<script src="audio.js?v=1789023315"></script>
+<script src="prose.js?v=1789023315"></script>
+<script src="birds.js?v=1789023315"></script>
+<script src="inscribe.js?v=1789023315"></script>
 <script>
 // ---------------------------------------------------------------------------
 // A printed page.
@@ -194,8 +198,15 @@ map.once('style.load', async () => {
   const { buildings, boroughs, subway } = await addLayers();
 
   frameTo();
+  Birds.init(document.getElementById('map'), map)
+    .then(n => console.log(`${n} birds loaded`))
+    .catch(e => console.warn('birds unavailable', e));
   Density.build(buildings);
   const essay = await fetch('text/essay.txt', { cache: 'no-cache' }).then(r => r.text());
+  // the drawn type has to be in the atlas before either layer is built
+  const drawnCount = await Inscription.loadHand('type/hand.png', 'type/hand.json')
+    .catch(e => { console.warn('drawn type unavailable', e); return 0; });
+  console.log(`${drawnCount} hand-drawn glyphs loaded`);
   // the same text the map is made of, held for the reading sheet
   document.getElementById('sheettext').innerHTML = essay
     .trim().split(/\n\s*\n/)
@@ -257,28 +268,45 @@ setInterval(() => {
 
 // Sound starts on the first touch of the page rather than behind a button.
 // Browsers will not open an audio context without a user gesture, so this
-// waits for one — but any gesture will do, and moving the map is one. Wheel
-// and trackpad scroll do NOT count as activation in Chrome, so those are not
-// listened for; pointer and key are what actually unlock it.
+// waits for one — but any gesture will do, and moving the map is one.
+//
+// It keeps waiting until sound is actually running, rather than until it has
+// tried once. The old version disarmed itself on the first attempt, which is
+// why the page was sometimes silent for its whole life: trackpad and wheel
+// scrolling do not count as activation in Chrome, so a session spent zooming
+// rather than clicking never unlocked anything; a click landing while the main
+// thread was busy building the inscription could outlive its own activation
+// window; and a single stalled request left a half-built engine that reported
+// itself as started. None of those are recoverable by the page — but all of
+// them are recoverable on the next click, so every gesture is another attempt
+// and the context's own state is what decides whether to stop listening.
 (() => {
-  let armed = true;
+  const EVENTS = ['pointerdown', 'pointerup', 'keydown', 'touchstart', 'wheel'];
+  let busy = false;
+
   const begin = async () => {
-    if (!armed) return;
-    armed = false;
-    for (const ev of ['pointerdown', 'keydown', 'touchstart']) {
-      window.removeEventListener(ev, begin);
-    }
+    if (busy || Audio.isRunning()) return;
+    busy = true;
     try {
       await Audio.start();
       Audio.update(listener());
     } catch (e) {
-      console.warn('audio could not start', e);
-      armed = true;
+      console.warn('audio could not start; will try again on the next gesture', e);
+    }
+    busy = false;
+    if (Audio.isRunning()) {
+      for (const ev of EVENTS) window.removeEventListener(ev, begin);
     }
   };
-  for (const ev of ['pointerdown', 'keydown', 'touchstart']) {
-    window.addEventListener(ev, begin, { passive: true });
-  }
+
+  for (const ev of EVENTS) window.addEventListener(ev, begin, { passive: true });
+
+  // A running context can still be taken away — the tab sleeps, or the system
+  // hands the audio device to something else. Coming back to the page puts it
+  // back rather than leaving the piece silent.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && Audio.isStarted()) Audio.resume();
+  });
 })();
 </script>
 </body>

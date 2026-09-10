@@ -32,6 +32,8 @@ const Pool = (() => {
   let clips = [];
   let slots = [];
   let target = 0.5, presence = 1, order = 0.3;
+  let up = false;             // whether the bus has been brought up yet
+  let rotating = false;       // one rotation loop, however many times init runs
   const cache = new Map();
   const MAX_CACHE = 8;
 
@@ -57,6 +59,10 @@ const Pool = (() => {
 
   async function init(destination, reverb) {
     out = destination;
+    // a second attempt after a failed one starts from nothing, rather than
+    // adding four more slots alongside the dead ones
+    for (const s of slots) { try { s.voice && s.voice.dispose(); } catch (e) {} }
+    slots = [];
     clips = await fetch('data/pool.json', { cache: 'no-cache' }).then(r => r.json());
 
     bus = new Tone.Gain(0);
@@ -67,6 +73,8 @@ const Pool = (() => {
     bus.connect(out);
     bus.connect(reverbSend);
     if (reverb) reverbSend.connect(reverb);
+
+    up = false;
 
     for (let i = 0; i < CFG.slots; i++) {
       // two gains per slot: `level` carries the continuous balance, `swap`
@@ -79,10 +87,23 @@ const Pool = (() => {
       slots.push({ level, swap, voice: null, clip: null, until: 0, w: 0 });
     }
 
-    await Promise.all(slots.map((s, i) => fill(s, i * 400)));
-    bus.gain.rampTo(1, 3);
-    rotate();
+    // The bus comes up as soon as the FIRST clip is playing, not once all four
+    // are. Waiting on all four meant one stalled request held the whole mix at
+    // zero: the page open, the engine built, and nothing coming out of it.
+    // Slots that are slow, or that fail outright, are simply filled later by
+    // the rotation — which is what the rotation is for.
+    slots.forEach((slot, i) => {
+      slot.busy = true;
+      fill(slot, i * 400).finally(() => { slot.busy = false; raise(); });
+    });
+    if (!rotating) { rotating = true; rotate(); }
     return clips.length;
+  }
+
+  function raise() {
+    if (up || !bus || !slots.some(s => s.voice)) return;
+    up = true;
+    bus.gain.rampTo(1, 3);
   }
 
   // --- buffers ------------------------------------------------------------
@@ -168,6 +189,7 @@ const Pool = (() => {
 
   function rotate() {
     const now = performance.now();
+    raise();                       // in case the first fill was the slow one
     for (const slot of slots) {
       // only swap what cannot currently be heard
       const inaudible = slot.w < CFG.quiet;
