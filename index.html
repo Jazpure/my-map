@@ -15,14 +15,22 @@
   /* the hand-lettered title, traced from the original drawing */
   #titleblock { position: absolute; top: 20px; left: 22px; z-index: 10; }
   #title { display: block; width: 168px; pointer-events: none; user-select: none; }
-  #textlink {
+  #textlink, #designlink {
     display: block; margin: 15px 0 0 8px; padding: 0;
     font: 600 12px/1 "Courier New", Courier, monospace;
     letter-spacing: .08em; color: #2b2721;
     background: none; border: 0; border-bottom: 1px solid #b9b2a2;
     cursor: pointer;
   }
-  #textlink:hover { border-bottom-color: #2b2721; }
+  #textlink:hover, #designlink:hover { border-bottom-color: #2b2721; }
+
+  /* The design note, bottom left. Unlike the title it is not always there:
+     it belongs to the wide views, where you are still reading the piece as a
+     whole, and it is out of the way by the time you are down among the
+     letters. Opacity is set from the zoom in the same handler the rest of
+     the page uses. */
+  #designblock { position: absolute; bottom: 24px; left: 22px; z-index: 10; }
+  #designlink { margin: 0; transition: opacity .28s ease; }
 
   /* the essay, as a sheet of paper over the map */
   #sheet {
@@ -36,13 +44,28 @@
     width: min(760px, 84vw); height: 84vh;
     background: #fff; box-shadow: 0 20px 70px rgba(0,0,0,.25);
   }
-  #sheettext {
+  .sheetbody {
     overflow-y: auto; padding: 62px 64px 56px;
     font: 400 14px/1.85 "Courier New", Courier, monospace;
     color: #23201b;
   }
-  #sheettext p { margin: 0 0 1.5em; }
-  #sheettext p:last-child { margin-bottom: 0; }
+  .sheetbody[hidden] { display: none; }
+  .sheetbody p { margin: 0 0 1.5em; }
+  .sheetbody p:last-child { margin-bottom: 0; }
+  .sheetbody h2 {
+    margin: 0 0 1.5em; font: 600 14px/1.85 inherit;
+    letter-spacing: .08em; text-transform: lowercase;
+  }
+  .sheetbody ul { margin: 0; padding-left: 1.4em; }
+  .sheetbody li { margin: 0 0 1.5em; }
+  .sheetbody li:last-child { margin-bottom: 0; }
+  /* the ledger, kept deliberately small: it is the fine print of the piece */
+  #ledgerline {
+    margin-top: 3.4em; padding-top: 1.2em; border-top: 1px solid #e6e1d6;
+    font-size: 11px; letter-spacing: .06em; color: #8a8272;
+  }
+  #ledgerline a { color: #8a8272; }
+  #ledgerline a:hover { color: #23201b; }
   #sheetclose {
     position: absolute; top: 12px; right: 14px; z-index: 1;
     width: 28px; height: 28px; padding: 0; line-height: 1;
@@ -61,23 +84,28 @@
   <button id="textlink">text</button>
 </div>
 
+<div id="designblock">
+  <button id="designlink">design</button>
+</div>
+
 <div id="sheet" hidden>
   <div id="sheetpaper">
     <button id="sheetclose" aria-label="close">&#215;</button>
-    <div id="sheettext"></div>
+    <div id="sheettext" class="sheetbody"></div>
+    <div id="designtext" class="sheetbody" hidden></div>
   </div>
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/deck.gl@9.1.12/dist.min.js"></script>
 <script src="https://unpkg.com/tone@15.1.22/build/Tone.js"></script>
-<script src="score.js?v=1789024059"></script>
-<script src="grains.js?v=1789024059"></script>
-<script src="pool.js?v=1789024059"></script>
-<script src="audio.js?v=1789024059"></script>
-<script src="prose.js?v=1789024059"></script>
-<script src="birds.js?v=1789024059"></script>
-<script src="inscribe.js?v=1789024059"></script>
+<script src="score.js?v=1789065552"></script>
+<script src="grains.js?v=1789065552"></script>
+<script src="pool.js?v=1789065552"></script>
+<script src="audio.js?v=1789065552"></script>
+<script src="prose.js?v=1789065552"></script>
+<script src="birds.js?v=1789065552"></script>
+<script src="inscribe.js?v=1789065552"></script>
 <script>
 // ---------------------------------------------------------------------------
 // A printed page.
@@ -211,6 +239,7 @@ map.once('style.load', async () => {
   document.getElementById('sheettext').innerHTML = essay
     .trim().split(/\n\s*\n/)
     .map(par => `<p>${par.trim().replace(/</g, '&lt;')}</p>`).join('');
+  loadDesign();
   Prose.build(boroughs, essay, buildings);
   Inscription.build(buildings, essay, subway);
 
@@ -254,17 +283,74 @@ setInterval(() => {
   Pool.update({ zoom: l.zoom, density: Density.at(l.lng, l.lat) });
 }, 120);
 
-// The reading sheet.
+// The reading sheet. One sheet of paper, two things it can hold: the essay
+// the map is made of, and the note about how it was made.
 (() => {
   const sheet = document.getElementById('sheet');
-  const open = () => { sheet.hidden = false; document.getElementById('sheettext').scrollTop = 0; };
+  const panels = { text: document.getElementById('sheettext'),
+                   design: document.getElementById('designtext') };
+  const open = which => {
+    for (const k in panels) panels[k].hidden = k !== which;
+    panels[which].scrollTop = 0;
+    sheet.hidden = false;
+  };
   const shut = () => { sheet.hidden = true; };
-  document.getElementById('textlink').onclick = open;
+  document.getElementById('textlink').onclick = () => open('text');
+  document.getElementById('designlink').onclick = () => open('design');
   document.getElementById('sheetclose').onclick = shut;
   // clicking the surround closes it; clicking the paper itself does not
   sheet.onclick = e => { if (e.target === sheet) shut(); };
   window.addEventListener('keydown', e => { if (e.key === 'Escape') shut(); });
 })();
+
+// The design note. Lines beginning with `- ` are bullets, a leading `# ` is
+// the heading, anything else is a paragraph — so the note stays a plain text
+// file that can be edited without touching this page.
+async function loadDesign() {
+  const el = document.getElementById('designtext');
+  let src;
+  try {
+    src = await fetch('text/design.txt', { cache: 'no-cache' }).then(r => r.text());
+  } catch (e) {
+    console.warn('design note unavailable', e);
+    document.getElementById('designblock').hidden = true;
+    return;
+  }
+  const esc = s => s.replace(/</g, '&lt;');
+  const out = [];
+  let list = [];
+  const flush = () => { if (list.length) { out.push(`<ul>${list.join('')}</ul>`); list = []; } };
+  for (const raw of src.trim().split('\n')) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (line.startsWith('- ')) list.push(`<li>${esc(line.slice(2))}</li>`);
+    else { flush(); out.push(line.startsWith('# ')
+      ? `<h2>${esc(line.slice(2))}</h2>` : `<p>${esc(line)}</p>`); }
+  }
+  flush();
+  out.push('<p id="ledgerline">' +
+           '<a href="ledger.html" target="_blank" rel="noopener">ledger</a></p>');
+  el.innerHTML = out.join('');
+}
+
+// The design link belongs to the wide views. It is legible while you are
+// still reading the piece whole and gone well before you are down among the
+// letters — it goes first, ahead of the birds, since it is the one thing on
+// the page that is not the work.
+const DESIGN_FADE = [11.0, 12.3];
+
+function fadeDesign() {
+  const el = document.getElementById('designlink');
+  if (!el) return;
+  const [a, b] = DESIGN_FADE;
+  const z = map.getZoom();
+  const o = z <= a ? 1 : z >= b ? 0 : (b - z) / (b - a);
+  el.style.opacity = o.toFixed(3);
+  el.style.pointerEvents = o < 0.08 ? 'none' : '';
+}
+map.on('zoom', fadeDesign);
+map.on('move', fadeDesign);
+fadeDesign();
 
 // Sound starts on the first touch of the page rather than behind a button.
 // Browsers will not open an audio context without a user gesture, so this

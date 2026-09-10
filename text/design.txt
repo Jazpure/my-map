@@ -1,0 +1,10 @@
+# Design
+
+This set of bullets quickly explains my design choices.
+
+- I refer to the explosions of letters as nodes. The nodes are made up of my real geographical data over this past month, give or take a few days.
+- The design of these nodes is meant to be self-referential to the text, which is the short essay you can find on the main page. Essentially the idea that as the clarity of memory degrades from time, mixing, and patina, you are left with an emotional texture that can actually tell you a lot about yourself, subtle as it is.
+- You can also read the essay in the parts of the city that I didn't travel to this month. This represents the declarative part of myself and how I project myself onto my surroundings.
+- This project was largely assembled with the use of AI. All my inspiration for the idea is from humans I look up to (Paula Scher, Jane Jacobs) and the experiences of my own life. Every aesthetic decision is mine. Claude is excellent at assembling data and visuals from different languages (vectors, raster, geographic data etc.) into html and css and that's what I use it for.
+- I also believe that if you use AI you should design the components so you get more of a human warmth. So the birds are obviously hand drawn (I should probably redo them), the title is hand drawn, and about half of the type is standard courier and the other half is my hand drawn copy of the courier typeface.
+- I hope you like my project and let me know if there's a spot on the map I should visit next :)

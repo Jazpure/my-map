@@ -11,11 +11,10 @@
 // a flock is recomputed when you zoom; you simply arrive at its height or
 // leave it.
 //
-//   top view      seen from above, so they belong to the far and middle
-//                 views — you are above them
-//   three-quarter seen from the side, so they belong to the middle and close
-//                 views — you are among them. Rarer, and they take a wider
-//                 arc nearer the edge of the frame.
+// Only the top views fly. The three-quarter drawings are still in the sheet
+// and still extracted, but they are seen from the side, which puts you level
+// with the bird rather than above it — a different vantage from the one the
+// map is drawn from, and they read as belonging to another picture.
 //
 // ARCS. A flock travels an elliptical arc at a fixed radius from the centre of
 // the screen, entering at one bearing and leaving at another. Because the
@@ -35,7 +34,6 @@ const Birds = (() => {
     // views the head and a wingtip are hard to tell apart, so if one flies
     // backwards this is the number to change.
     faces: {
-      q1: 12, q2: 172, q3: 164,
       t1: -90, t2: -112, t3: -108, t4: -110,
       t5: -38, t6: -140, t7: -57, t8: -43,
     },
@@ -47,8 +45,6 @@ const Birds = (() => {
 
     top:     { zoom: [9.6, 14.0], spread: 1.6, clear: [0.46, 0.72],
                speed: [0.200, 0.410], flock: [1, 3] },
-    quarter: { zoom: [12.6, 14.0], spread: 1.3, clear: [0.74, 1.02],
-               speed: [0.145, 0.290], flock: [1, 2] },
 
     // Coming down onto the city, the birds thin out and then stop. Below the
     // first figure the sky is as busy as it is at the widest view; between the
@@ -61,11 +57,18 @@ const Birds = (() => {
     // otherwise vanish between one frame and the next.
     quiet: [13.1, 14.3],
 
-    maxTop: 3,          // top-view flocks alive at once
-    maxQuarter: 1,      // three-quarter flocks alive at once
-    quarterOdds: 0.35,  // chance a freed quarter slot is refilled at all
+    // Before that, and over a much longer run, they simply become less of an
+    // event: smaller and weaker on average the closer in you are, so a bird is
+    // still a bird at the city scale but stops competing with the writing. It
+    // is the AVERAGE that moves — the spread stays as wide as it was, so a
+    // close view still throws up the occasional big, solid one.
+    dim: [11.4, 14.3],
+    dimSize: 0.70,      // the mean size at the near end, as a fraction
+    dimFade: 0.62,      // and the mean opacity
+    dimSpread: 0.17,    // ± on the opacity, flock to flock
+
+    maxTop: 3,          // flocks alive at once
     gapTop: [0.8, 5.5], // seconds before a finished flock is replaced
-    gapQuarter: [14, 46],
     idle: 0.35,         // seconds of empty sky before one is launched anyway
     entry: 1.7,         // …and how long it then has to fly in before asking again
     sweep: [1.15, 2.45], // radians between entry and exit bearings
@@ -99,6 +102,14 @@ const Birds = (() => {
     return t * t * (3 - 2 * t);
   }
 
+  // 0 out wide, 1 at the near end of the range the birds live in. Read once
+  // when a flock is born and then kept, so a flock does not shrink under you
+  // mid-flight — what changes with the zoom is what the next one is like.
+  function closeness(z) {
+    const [a, b] = CFG.dim;
+    return Math.max(0, Math.min(1, (z - a) / (b - a)));
+  }
+
   // --- setup --------------------------------------------------------------
 
   async function init(container, map) {
@@ -129,7 +140,6 @@ const Birds = (() => {
     zoomNow = map.getZoom();
     // the first flock is already on its way in when the page opens
     for (let i = 0; i < CFG.maxTop; i++) flocks.push(spawn('top', i * rnd(0.8, 2.6)));
-    flocks.push(spawn('quarter', rnd(0, 20)));
 
     running = true;
     last = performance.now();
@@ -166,7 +176,12 @@ const Birds = (() => {
     const from = Math.random() * Math.PI * 2;
     const dir = Math.random() < 0.5 ? 1 : -1;
     const sweep = rnd(CFG.sweep[0], CFG.sweep[1]) * dir;
-    const size = rnd(CFG.size[0], CFG.size[1]);
+
+    // how far in the camera is, fixed at birth
+    const k = closeness(zoomNow);
+    const size = rnd(CFG.size[0], CFG.size[1]) * (1 - k * (1 - CFG.dimSize));
+    const fade = Math.min(1, (1 - k * (1 - CFG.dimFade))
+                             * rnd(1 - CFG.dimSpread, 1 + CFG.dimSpread));
 
     const birds = [];
     for (let i = 0; i < n; i++) {
@@ -193,7 +208,7 @@ const Birds = (() => {
                               zoomNow + rnd(-band * 0.9, band * 0.55)));
 
     return {
-      view, birds, from, sweep, size,
+      view, birds, from, sweep, size, fade,
       clear: rnd(c.clear[0], c.clear[1]),   // closest approach to the centre
       altitude,
       speed: rnd(c.speed[0], c.speed[1]),
@@ -271,13 +286,10 @@ const Birds = (() => {
       f.t += dt * f.speed;
 
       if (f.t > 1.15) {
-        const gap = f.view === 'top' ? CFG.gapTop : CFG.gapQuarter;
         // the wait stretches as the sky empties, so flights get rarer on the
         // way in rather than all stopping together at one zoom
-        const wait = rnd(gap[0], gap[1]) / Math.max(0.06, sky);
-        flocks[i] = (f.view === 'quarter' && Math.random() > CFG.quarterOdds)
-          ? spawn('quarter', wait * 2)
-          : spawn(f.view, wait);
+        const gap = CFG.gapTop;
+        flocks[i] = spawn('top', rnd(gap[0], gap[1]) / Math.max(0.06, sky));
         continue;
       }
 
@@ -293,7 +305,7 @@ const Birds = (() => {
                              Math.pow(2, (zoom - f.altitude) * CFG.grow)));
 
       const edge = Math.min(1, f.t / 0.05, (1.15 - f.t) / 0.08);
-      const alpha = CFG.alpha * near * Math.max(0, edge) * sky;
+      const alpha = CFG.alpha * near * Math.max(0, edge) * sky * f.fade;
       if (alpha <= 0.01) continue;
 
       // work out where every bird in the flock sits, and the box they cover
@@ -331,9 +343,20 @@ const Birds = (() => {
         const faces = (CFG.faces[o.sp.name] || 0) * Math.PI / 180;
         bctx.save();
         bctx.translate(o.cx, o.cy);
-        bctx.rotate(o.heading - faces);
+        // Two rotations with the flap between them, not one rotation with the
+        // flap folded into the drawImage. The beat has to squeeze the bird
+        // ACROSS its line of flight — that is what a wingbeat is — and the
+        // sprite's own vertical axis is at whatever angle the bird happened to
+        // be drawn at on the paper. Applied in the sprite's frame it stretched
+        // some of them lengthwise instead, along the direction of travel,
+        // which reads as a bird craning rather than flying. Rotating into the
+        // heading first puts +x along the path, so the squeeze is always
+        // perpendicular to it however the drawing was oriented.
+        bctx.rotate(o.heading);
+        bctx.scale(1, beat);
+        bctx.rotate(-faces);
         bctx.drawImage(sheet, o.sp.x, o.sp.y, meta.cell, meta.cell,
-                       -o.dw / 2, -o.dh / 2 * beat, o.dw, o.dh * beat);
+                       -o.dw / 2, -o.dh / 2, o.dw, o.dh);
         bctx.restore();
       }
 
@@ -353,17 +376,14 @@ const Birds = (() => {
     // Something is always in the air — while there is a sky to be in. The gaps
     // between flights are random and the arcs are long, so left alone the page
     // goes quiet for a while at a time; if it has been empty for a moment,
-    // whichever flock is nearest to ready is put up now. Only the top views
-    // are used for this — the three-quarter birds are meant to be rare and are
-    // left rare. Close in, this stops: an empty sky there is the point, not a
-    // gap to be filled.
+    // whichever flock is nearest to ready is put up now. Close in, this stops:
+    // an empty sky there is the point, not a gap to be filled.
     lastFlew = flew;
     if (flew || sky < 0.6) {
       idle = 0;
     } else if ((idle += dt) > CFG.idle) {
       let best = -1, soonest = Infinity;
       for (let i = 0; i < flocks.length; i++) {
-        if (flocks[i].view !== 'top') continue;
         // one that is counting down beats one already flying somewhere unseen
         const ready = flocks[i].wait > 0 ? flocks[i].wait : 1e6;
         if (ready < soonest) { soonest = ready; best = i; }
@@ -379,9 +399,12 @@ const Birds = (() => {
     onScreen: lastFlew,
     sky: +presence(zoomNow).toFixed(3),
     flocks: flocks.map(f => ({ view: f.view, n: f.birds.length,
+                               from: +f.from.toFixed(3), sweep: +f.sweep.toFixed(3),
+                               sprites: f.birds.map(b => b.sprite.name),
                                altitude: +f.altitude.toFixed(2),
                                t: +f.t.toFixed(2), wait: +f.wait.toFixed(1),
-                               size: Math.round(f.size), clear: +f.clear.toFixed(2) })),
+                               size: Math.round(f.size), fade: +f.fade.toFixed(2),
+                               clear: +f.clear.toFixed(2) })),
   });
 
   return { init, state, CFG };

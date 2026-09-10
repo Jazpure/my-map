@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>my map — decision record</title>
+<style>
+  :root { --bg:#fff; --fg:#111; --dim:#6f6f6f; --rule:#dcdcdc; --faint:#efefef; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#101010; --fg:#e9e9e9; --dim:#8e8e8e; --rule:#333; --faint:#1e1e1e;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--fg); margin: 0; padding: 40px 20px 84px;
+    font: 400 13px/1.65 "Courier New", Courier, monospace;
+  }
+  .doc { max-width: 720px; margin: 0 auto; }
+
+  h1 { font: 700 14px/1.4 inherit; letter-spacing: .06em; margin: 0 0 6px; }
+  .scope { margin: 0 0 20px; color: var(--dim); max-width: 74ch; font-size: 12px; }
+
+  dl.meta {
+    display: grid; grid-template-columns: max-content 1fr; gap: 2px 16px;
+    margin: 0 0 26px; padding: 11px 0;
+    border-top: 1px solid var(--fg); border-bottom: 1px solid var(--rule);
+    font-size: 12px;
+  }
+  dl.meta dt { color: var(--dim); text-transform: uppercase; letter-spacing: .12em; font-size: 10.5px; }
+  dl.meta dd { margin: 0; font-variant-numeric: tabular-nums; }
+  a { color: inherit; }
+
+  h2 {
+    font: 700 11px/1.4 inherit; text-transform: uppercase; letter-spacing: .15em;
+    margin: 34px 0 0; padding-bottom: 6px; border-bottom: 1px solid var(--fg);
+  }
+  .range { margin: 5px 0 8px; color: var(--dim); font-size: 11px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  td, th { text-align: left; vertical-align: top; padding: 7px 12px 7px 0; border-bottom: 1px solid var(--faint); }
+  th { font-size: 10.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--dim); border-bottom: 1px solid var(--rule); font-weight: 400; }
+  td.n { white-space: nowrap; width: 3.4em; font-variant-numeric: tabular-nums; }
+  td.w { white-space: nowrap; width: 5.6em; color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+  /* design decisions carry the page; the technical rows sit under them */
+  tr.impl td:not(.n) { color: var(--dim); }
+  td b { font-weight: 700; }
+  .scroll { overflow-x: auto; }
+
+  ul.plain { margin: 6px 0 0; padding-left: 1.2em; color: var(--dim); }
+  ul.plain li { margin-bottom: 4px; }
+
+  footer { margin-top: 38px; padding-top: 12px; border-top: 1px solid var(--rule); color: var(--dim); font-size: 11px; }
+  footer p { margin: 0 0 4px; max-width: 76ch; }
+
+  @media (max-width: 620px) {
+    dl.meta { grid-template-columns: 1fr; gap: 0; }
+    dl.meta dd { margin-bottom: 8px; }
+    td.w { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+
+<h1>my map — decision record</h1>
+<p class="scope">Design decisions in the order they were made, each with the technical means
+directly beneath it. <b>Direction</b> is a change to what the work is; <b>means</b> is how it was
+built; <b>fix</b> is a defect found and corrected. Origin is where a decision was made, not who
+did the work.</p>
+
+<dl class="meta">
+  <dt>Period</dt><dd>2026-08-12 – 2026-09-10</dd>
+  <dt>Entries</dt><dd>52 across 7 phases</dd>
+  <dt>Work</dt><dd><a href="https://jazpure.github.io/my-map/">jazpure.github.io/my-map</a></dd>
+  <dt>Source</dt><dd><a href="https://github.com/Jazpure/my-map">github.com/Jazpure/my-map</a></dd>
+</dl>
+
+<h2>1 · Geometry</h2>
+<p class="range">2026-08-12 – 2026-08-14</p>
+<div class="scroll"><table>
+<tr><th class="n">№</th><th class="w">Type</th><th>Decision</th></tr>
+<tr><td class="n">1.1</td><td class="w">direction</td><td><b>Built form is the display surface.</b> Buildings and street segments light up; the GPS point cloud is discarded as a layer.</td></tr>
+<tr class="impl"><td class="n">1.2</td><td class="w">means</td><td>Gaussian deposition from each trace point onto footprint centroids, σ 34 m, cut at 3σ, normalised to the 98.5th percentile. Baked offline into the geometry.</td></tr>
+<tr class="impl"><td class="n">1.3</td><td class="w">means</td><td>MapLibre GL JS with no API key, so the work could later be published unchanged.</td></tr>
+<tr class="impl"><td class="n">1.4</td><td class="w">means</td><td>OpenStreetMap queried only for cells the trace occupies: 16.8 km² of a 48 km² box.</td></tr>
+<tr><td class="n">1.5</td><td class="w">direction</td><td><b>Unvisited ground is omitted.</b> Borough outlines are the only geographic context.</td></tr>
+<tr class="impl"><td class="n">1.6</td><td class="w">means</td><td>Aggregation at 110 m preserving built area and area-weighted height. 17:1 fewer shapes.</td></tr>
+<tr><td class="n">1.7</td><td class="w">direction</td><td><b>Photographic texture.</b> Superseded by the prose field at 4.8; kept in the repository, not loaded.</td></tr>
+</table></div>
+
+<h2>2 · Sound</h2>
+<p class="range">2026-08-18 – 2026-08-26</p>
+<div class="scroll"><table>
+<tr><th class="n">№</th><th class="w">Type</th><th>Decision</th></tr>
+<tr><td class="n">2.1</td><td class="w">direction</td><td><b>Density, not location.</b> One shared pool of seventeen recordings; sparse ground raises distant rumble, dense ground raises crowds. Nothing switches on or off.</td></tr>
+<tr><td class="n">2.2</td><td class="w">direction</td><td><b>A fluid whole, not components.</b> All clips sound at all times; moving alters balance only. Overview is a filtered distant wash, never silence.</td></tr>
+<tr class="impl"><td class="n">2.3</td><td class="w">means</td><td>Every parameter is a curve over one scalar per layer — its proximity to the camera.</td></tr>
+<tr class="impl"><td class="n">2.4</td><td class="w">means</td><td>Constant power: slot levels normalised so the sum of squares is fixed. A rise in one clip is exactly a fall in another.</td></tr>
+<tr class="impl"><td class="n">2.5</td><td class="w">fix</td><td>Zoom→altitude linear, so anchored material died within one zoom level of the ground. Made logarithmic.</td></tr>
+<tr class="impl"><td class="n">2.6</td><td class="w">fix</td><td>Measured loudness ranked a quiet night above a dense crowd — library masters are level-matched by the publisher. Filename descriptors at 0.72 weight instead.</td></tr>
+<tr class="impl"><td class="n">2.7</td><td class="w">fix</td><td>Three defects: per-grain random pan; 45 % duty cycle; rotation as fade-out, four-second wait, fade-in. Rebuilt on overlap-add — triangular envelopes at half-overlap sum flat — fixed hop, one drifting pan per voice, rotation only while inaudible.</td></tr>
+<tr><td class="n">2.8</td><td class="w">direction</td><td><b>No synthesised material.</b> A layer with no recording is silent rather than invented.</td></tr>
+</table></div>
+
+<h2>3 · Movement data</h2>
+<p class="range">2026-09-08</p>
+<div class="scroll"><table>
+<tr><th class="n">№</th><th class="w">Type</th><th>Decision</th></tr>
+<tr><td class="n">3.1</td><td class="w">direction</td><td><b>Real trace.</b> Google Timeline export replaces the synthetic stand-in. New York City extent only.</td></tr>
+<tr class="impl"><td class="n">3.2</td><td class="w">means</td><td>Five export schemas detected. Fixes above 120 m accuracy dropped; stationary runs collapsed to one weighted point, capped at 90 minutes.</td></tr>
+<tr class="impl"><td class="n">3.3</td><td class="w">fix</td><td>Visit records state their own duration; the first pass re-derived it from timestamps, weighing a three-hour stay like a passing fix.</td></tr>
+</table></div>
+
+<h2>4 · Typography</h2>
+<p class="range">2026-09-08</p>
+<div class="scroll"><table>
+<tr><th class="n">№</th><th class="w">Type</th><th>Decision</th></tr>
+<tr><td class="n">4.1</td><td class="w">direction</td><td><b>Text is the substance.</b> Building outlines become writing, obscured in proportion to visit density — density makes illegibility, not emphasis.</td></tr>
+<tr><td class="n">4.2</td><td class="w">direction</td><td><b>English, Courier, primary inks.</b> One colour per glyph. A braille scheme was proposed and rejected.</td></tr>
+<tr><td class="n">4.3</td><td class="w">direction</td><td><b>White ground.</b> Printed, not emissive — which invalidates the additive colour model of 4.2.</td></tr>
+<tr><td class="n">4.4</td><td class="w">direction</td><td><b>No colour interaction.</b> Overlaps do not mix; density shows as crowding alone.</td></tr>
+<tr><td class="n">4.5</td><td class="w">direction</td><td><b>Scatter far, gather close, atomise closer.</b> Up to 1900 m of displacement at the widest view, resolving to true position, then breaking into particles.</td></tr>
+<tr><td class="n">4.6</td><td class="w">direction</td><td><b>Depth by size.</b> Glyph size varies with distance from the cluster centre; draw order sorted to agree with it.</td></tr>
+<tr><td class="n">4.7</td><td class="w">direction</td><td><b>Prose field.</b> The essay set across the boroughs and deformed by visit density — displaced, rotated, jittered, and inked from pink toward the glyph colours.</td></tr>
+<tr class="impl"><td class="n">4.8</td><td class="w">means</td><td>Scanline typesetting: each line of type intersected with the boundary edges, crossings sorted, glyphs set only in interior spans. 132,092 glyphs — avoids as many point-in-polygon tests.</td></tr>
+<tr class="impl"><td class="n">4.9</td><td class="w">fix</td><td>Multiply blending read black: deck.gl draws to its own transparent canvas. Rendered interleaved into the MapLibre framebuffer.</td></tr>
+<tr class="impl"><td class="n">4.10</td><td class="w">fix</td><td>Deformation field at 170 m / 5 passes left 97 % of the page flat. Widened to 320 m / 7 passes, response exponent below unity.</td></tr>
+<tr class="impl"><td class="n">4.11</td><td class="w">fix</td><td>Prose sized in metres was unbounded on approach — 66 px against 10 px glyphs, inverting the hierarchy. Capped at body size.</td></tr>
+</table></div>
+
+<h2>5 · Title and distribution</h2>
+<p class="range">2026-09-08 – 2026-09-09</p>
+<div class="scroll"><table>
+<tr><th class="n">№</th><th class="w">Type</th><th>Decision</th></tr>
+<tr><td class="n">5.1</td><td class="w">direction</td><td><b>Hand-lettered title.</b> Brush on graph paper, photographed, cleaned and vectorised. Top left, with a link to read the essay as a sheet of paper.</td></tr>
+<tr class="impl"><td class="n">5.2</td><td class="w">means</td><td>Threshold against a blurred estimate of the page, not a constant, for uneven light. Contour upsampled, blurred, re-thresholded for sub-pixel edges; traced with potrace. Word gap 141 → 96 px on a 2150 px line.</td></tr>
+<tr><td class="n">5.3</td><td class="w">direction</td><td><b>Published.</b> Public repository, audio included, after the constraints at B.1–B.2.</td></tr>
+<tr class="impl"><td class="n">5.4</td><td class="w">means</td><td>Raw trace and 29 MB of cached Overpass responses withheld; the site renders from baked geometry and never reads the trace.</td></tr>
+</table></div>
+
+<h2>6 · Hand type and birds</h2>
+<p class="range">2026-09-09 – 2026-09-10</p>
+<div class="scroll"><table>
+<tr><th class="n">№</th><th class="w">Type</th><th>Decision</th></tr>
+<tr><td class="n">6.1</td><td class="w">direction</td><td><b>Half the alphabet is drawn by hand.</b> A Courier specimen drawn in marker replaces 40 % of the glyphs at random. Colour, size and position unchanged — the only difference is the letterform.</td></tr>
+<tr class="impl"><td class="n">6.2</td><td class="w">means</td><td>Segmented by connected components; rows clustered from every mark, since ? and ! rise above the line their dots sit on. d, q and x were ringed placeholders — found by bounding-box containment, built by reflection from b, p, X.</td></tr>
+<tr class="impl"><td class="n">6.3</td><td class="w">means</td><td>One scale per set from the set's own median reference — cap height for capitals, x-height for lowercase — against per-row baselines. Ascenders and descenders keep their drawn length. 58 glyphs.</td></tr>
+<tr class="impl"><td class="n">6.4</td><td class="w">fix</td><td>Greyscale atlas composited its black ground as opaque and every glyph drew as a filled square. The icon layer reads alpha; sheet rewritten as RGBA.</td></tr>
+<tr><td class="n">6.5</td><td class="w">direction</td><td><b>Hand-drawn birds cross the page.</b> Flocks of one to three on arcs that never cross the centre of the frame, in screen space, each flock fixed at an altitude so the view can pass it.</td></tr>
+<tr><td class="n">6.6</td><td class="w">direction</td><td><b>The beak leads.</b> Birds enter from outside the frame rather than appearing in it, and grow rather than vanish as the view comes down.</td></tr>
+<tr><td class="n">6.7</td><td class="w">direction</td><td><b>Birds are opaque to each other.</b> A flock may be faint, but within it nothing shows through; the higher flock takes precedence.</td></tr>
+<tr class="impl"><td class="n">6.8</td><td class="w">means</td><td>Eleven drawings, hand-set regions; ruled edges rejected by a straightness test on their principal axes; silhouettes closed by dilate, flood, erode. Each flock draws into a buffer at full strength and composites once, descending altitude last.</td></tr>
+<tr class="impl"><td class="n">6.9</td><td class="w">means</td><td>A quadratic with both ends off-page, its control point placed so the curve's midpoint sits at the requested clearance — the centre stays clear without testing the curve.</td></tr>
+<tr class="impl"><td class="n">6.10</td><td class="w">fix</td><td>Frame-time capped at 0.05 s held flight to a third of its set speed below 20 fps, which is where the page runs on integrated graphics.</td></tr>
+</table></div>
+
+<h2>7 · Connection, repair, the close view</h2>
+<p class="range">2026-09-10</p>
+<div class="scroll"><table>
+<tr><th class="n">№</th><th class="w">Type</th><th>Decision</th></tr>
+<tr><td class="n">7.1</td><td class="w">direction</td><td><b>Train lines join the uptown days to downtown.</b> The near-lit rule had dropped exactly the track that does the connecting, leaving Inwood and East Harlem as islands.</td></tr>
+<tr class="impl"><td class="n">7.2</td><td class="w">means</td><td>Graph on shared node ids; shortest run of real track kept whole. Both ends seeded from every platform within 900 m of the trace — the IRT and IND are separate networks, so one boarding point decides the system before the search runs. Lexington Avenue and Broadway–Seventh Avenue; 19.6 km, gaps only.</td></tr>
+<tr class="impl"><td class="n">7.3</td><td class="w">fix</td><td>Three routes to permanent silence: listeners disarmed after one attempt, the started flag set before the graph existed, the bus gated on all four clips. Every gesture is now another attempt.</td></tr>
+<tr><td class="n">7.4</td><td class="w">direction</td><td><b>Something is always flying</b> at the far and middle views. Flocks are born at the altitude the camera is at; the opening view had been empty three fifths of the time.</td></tr>
+<tr><td class="n">7.5</td><td class="w">direction</td><td><b>Birds stop before the close view.</b> Thinning from zoom 13.1 and gone by 14.3 — two zoom levels short of where the letters atomise. Rarer and fainter together, so they wean off rather than switch off.</td></tr>
+<tr><td class="n">7.6</td><td class="w">direction</td><td><b>Three-quarter birds withdrawn.</b> Seen from the side, they put the viewer level with the bird — a different vantage from the one the map is drawn from.</td></tr>
+<tr><td class="n">7.7</td><td class="w">direction</td><td><b>Birds smaller and fainter on average as the city comes up.</b> The mean moves, the spread does not, so a close view still throws up a large one.</td></tr>
+<tr class="impl"><td class="n">7.8</td><td class="w">fix</td><td>The wingbeat was applied in each sprite's own frame, so birds drawn pointing up were stretched along their line of flight. Now applied across the heading.</td></tr>
+<tr><td class="n">7.9</td><td class="w">direction</td><td><b>Design note, bottom left,</b> fading out between zoom 11.0 and 12.3 — gone ahead of the birds, being the one thing on the page that is not the work.</td></tr>
+</table></div>
+
+<h2>A · Decided without consultation</h2>
+<p class="range">Each serving a direction recorded above.</p>
+<div class="scroll"><table>
+<tr><th class="n">№</th><th>Decision</th><th>Reason</th></tr>
+<tr><td class="n">1.3</td><td>Keyless map stack</td><td>Publication later needed no change</td></tr>
+<tr><td class="n">1.2</td><td>Offline illumination bake</td><td>Render cost independent of dataset size</td></tr>
+<tr><td class="n">2.6</td><td>Descriptors over measurement</td><td>Measurement demonstrably inverted the order</td></tr>
+<tr><td class="n">2.7</td><td>Fixed grain hop</td><td>Randomised timing destroys constant-sum overlap</td></tr>
+<tr><td class="n">4.8</td><td>Scanline clipping</td><td>Avoids 132,092 point-in-polygon tests</td></tr>
+<tr><td class="n">6.8</td><td>Straightness test on principal axes</td><td>Separates a drawn wing from a ruled table edge</td></tr>
+<tr><td class="n">7.2</td><td>Multi-source shortest path</td><td>A single boarding point picks the wrong system</td></tr>
+<tr><td class="n">5.4</td><td>Trace excluded from the repository</td><td>Not read at runtime; nothing served by publishing it</td></tr>
+<tr><td class="n">—</td><td>Basemap removed entirely</td><td>No tiles visible; removed a dependency and a load-timing defect</td></tr>
+</table></div>
+
+<h2>B · Raised before proceeding</h2>
+<div class="scroll"><table>
+<tr><th class="n">№</th><th>Constraint</th><th>Resolution</th></tr>
+<tr><td class="n">B.1</td><td>Audio is library material, scoped by the author to private viewing</td><td>Raised on receipt and again before publication; author elected to publish</td></tr>
+<tr><td class="n">B.2</td><td>A public repository would carry precise movement history including residence</td><td>Raw trace excluded; derived geometry retained as the work</td></tr>
+<tr><td class="n">B.3</td><td>Google Timeline export has moved on-device; the documented route may not apply</td><td>Both routes given rather than one asserted</td></tr>
+</table></div>
+
+<h2>C · Sources</h2>
+<ul class="plain">
+  <li>Geometry — OpenStreetMap via Overpass: footprints, street centrelines, subway alignments.</li>
+  <li>Boundaries — NYC Open Data, simplified 81,085 → 3,613 vertices.</li>
+  <li>Movement — Google Timeline on-device export, the author's own.</li>
+  <li>Audio — Epidemic Sound urban ambience.</li>
+  <li>Type — Courier, and a hand-drawn specimen of it: 58 glyphs.</li>
+  <li>Drawings — title and eleven birds, brush and marker on graph paper.</li>
+  <li>Runtime — MapLibre GL JS 5.6.0, deck.gl 9.1.12, Tone.js 15.1.22.</li>
+  <li>Tooling — Python 3 with NumPy and Pillow; potrace 1.16; afconvert.</li>
+</ul>
+
+<footer>
+  <p>Dates are file modification times and record when a stage was last worked, not when it began.</p>
+  <p>Every decision about what the work is is recorded as the author's.</p>
+</footer>
+
+</div>
+</body>
+</html>
