@@ -202,6 +202,7 @@ const Prose = (() => {
   }
 
   function build(boroughs, text, buildings) {
+    viewSig = null;   // any cached glyph list belongs to the old field
     const { mapping, HAND } = Inscription.glyphs();
     const drawn = c => Math.random() < CFG.handShare && !!mapping[c + HAND];
     Field.build(buildings);
@@ -300,6 +301,8 @@ const Prose = (() => {
   // --- per-frame ----------------------------------------------------------
 
   let lastCount = 0;
+  // the visible glyph list, kept across frames — see `sig` in layer()
+  let viewSig = null, viewData = [];
 
   function layer(map, timeSec) {
     if (!P) return null;
@@ -327,26 +330,57 @@ const Prose = (() => {
     const y0 = Math.floor((b.getSouth() - pad) / CELL);
     const y1 = Math.floor((b.getNorth() + pad) / CELL);
 
-    const data = [];
-    outer:
-    for (let gx = x0; gx <= x1; gx++) {
-      for (let gy = y0; gy <= y1; gy++) {
-        const bucket = index.get(key(gx, gy));
-        if (!bucket) continue;
-        for (const i of bucket) {
-          if (i % stride) continue;
-          if (data.length >= CFG.budget) break outer;
-          data.push(i);
+    // THE LIST OF GLYPHS ON SCREEN, AND WHY IT IS CACHED.
+    //
+    // deck.gl recalculates every attribute of every instance whenever the
+    // `data` reference changes. This array was rebuilt on each frame, so a
+    // new reference arrived sixty times a second and all 132k glyphs had
+    // their position, size, angle and colour recomputed and re-uploaded even
+    // while the map sat perfectly still. It cost about nine tenths of the
+    // frame rate: with this layer removed the page ran at 58 fps and with it
+    // at 10.
+    //
+    // The list only actually changes when the visible range of cells does, so
+    // it is rebuilt then and the same array handed back otherwise. Movement
+    // is unaffected — the drift still arrives through updateTriggers, on its
+    // own quantised clock below.
+    const sig = x0 + ',' + x1 + ',' + y0 + ',' + y1 + ',' + stride;
+    if (sig !== viewSig) {
+      viewSig = sig;
+      const d = [];
+      outer:
+      for (let gx = x0; gx <= x1; gx++) {
+        for (let gy = y0; gy <= y1; gy++) {
+          const bucket = index.get(key(gx, gy));
+          if (!bucket) continue;
+          for (const i of bucket) {
+            if (i % stride) continue;
+            if (d.length >= CFG.budget) break outer;
+            d.push(i);
+          }
         }
       }
+      viewData = d;
     }
+    const data = viewData;
     lastCount = data.length;
 
     // Quantised to CFG.tick. Every accessor below is re-evaluated whenever
     // this changes, and there are 130k of them — at 60 Hz that is the entire
     // frame budget spent on background text. A few updates a second is plenty
     // for a drift this slow, and the node letters carry the real movement.
-    const t = Math.round(timeSec * CFG.speed / CFG.tick) * CFG.tick;
+    //
+    // And the clock stops entirely while the drift is smaller than a pixel.
+    // The sway is measured in metres, so at the opening view a whole one of
+    // them is a twentieth of a pixel: the recomputation was moving nothing at
+    // all, and moving nothing across the most glyphs the page ever shows.
+    const c = map.getCenter();
+    const dLng = 0.002;
+    const mPerPx = (dLng * 111320 * Math.cos(c.lat * Math.PI / 180))
+                 / Math.max(1e-6, Math.abs(map.project([c.lng + dLng, c.lat]).x
+                                         - map.project([c.lng, c.lat]).x));
+    const moves = CFG.sway * 1.4 / mPerPx > 0.3;
+    const t = moves ? Math.round(timeSec * CFG.speed / CFG.tick) * CFG.tick : 0;
     const mx = P.mx, my = P.my;
     const { atlas, mapping, PRIMARIES } = Inscription.glyphs();
 

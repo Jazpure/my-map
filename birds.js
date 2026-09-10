@@ -25,9 +25,6 @@
 const Birds = (() => {
 
   const CFG = {
-    // zoom bands. `spread` is the half-width of the band a flock is visible in
-    size: [34, 78],
-
     // Which way each drawing already faces, in degrees, 0 pointing right and
     // increasing clockwise. A bird is rotated by its heading MINUS this, so
     // the beak leads. Read off the drawings by eye — on the star-shaped top
@@ -38,13 +35,7 @@ const Birds = (() => {
       t5: -38, t6: -140, t7: -57, t8: -43,
     },
 
-    // How much a bird grows per zoom level as you come down onto it. Full
-    // perspective would be 1.0 and is far too violent across eight levels.
-    grow: 0.5,
-    growClamp: [0.30, 3.4],
-
-    top:     { zoom: [9.6, 14.0], spread: 1.6, clear: [0.46, 0.72],
-               speed: [0.200, 0.410], flock: [1, 3] },
+    top: { zoom: [9.6, 14.0], spread: 1.6, speed: [0.200, 0.410], flock: [1, 3] },
 
     // Coming down onto the city, the birds thin out and then stop. Below the
     // first figure the sky is as busy as it is at the widest view; between the
@@ -57,19 +48,33 @@ const Birds = (() => {
     // otherwise vanish between one frame and the next.
     quiet: [13.1, 14.3],
 
-    // Before that, and over a much longer run, they simply become less of an
-    // event: smaller and weaker on average the closer in you are, so a bird is
-    // still a bird at the city scale but stops competing with the writing. It
-    // is the AVERAGE that moves — the spread stays as wide as it was, so a
-    // close view still throws up the occasional big, solid one.
-    dim: [11.4, 14.3],
-    dimSize: 0.70,      // the mean size at the near end, as a fraction
-    dimFade: 0.62,      // and the mean opacity
-    dimSpread: 0.17,    // ± on the opacity, flock to flock
+    // Before that, and over a much longer run, the birds go further away.
+    //
+    // Out wide they are near you — that is the height they hang about at.
+    // Coming down you are dropping away from them, so they read small, faint,
+    // and further out toward the edge of the frame, and there are fewer of
+    // them. Size and opacity are read from these ranges CONTINUOUSLY, at
+    // whatever zoom the camera is at, while a flock keeps its own place
+    // within the range for its whole flight: a big bird stays the big one,
+    // but the whole population recedes as you come in. Read once at birth
+    // instead, a flock launched at the wide view kept its wide-view size all
+    // the way down — and since it was also drawn larger the closer you got,
+    // zooming in on the piece produced exactly the thing that must not
+    // happen, one big bird crossing the page slowly while somebody reads.
+    //
+    // `clear` and `gap` stay fixed at birth: the first is the flight path,
+    // which cannot change under the bird, and the second is only read when
+    // the next flight is scheduled.
+    dim: [10.8, 14.3],
+    far:  { size: [34, 78], fade: [0.86, 1.00],
+            clear: [0.46, 0.72], gap: [0.8, 5.5] },
+    near: { size: [14, 27],  fade: [0.30, 0.50],
+            clear: [0.74, 1.08], gap: [2.6, 12.0] },
 
     maxTop: 3,          // flocks alive at once
-    gapTop: [0.8, 5.5], // seconds before a finished flock is replaced
-    idle: 0.35,         // seconds of empty sky before one is launched anyway
+    // seconds of empty sky tolerated before one is launched anyway — a third
+    // of a second out wide, six seconds by the near end
+    idle: [0.35, 6.0],
     entry: 1.7,         // …and how long it then has to fly in before asking again
     sweep: [1.15, 2.45], // radians between entry and exit bearings
     alpha: 0.94,
@@ -109,6 +114,17 @@ const Birds = (() => {
     const [a, b] = CFG.dim;
     return Math.max(0, Math.min(1, (z - a) / (b - a)));
   }
+
+  // One quantity, its range mixed between the far and near sets. `u` is where
+  // in that range this flock sits — held for the flock's life, so a bird keeps
+  // its character while the range itself follows the camera.
+  const band = (key, k, u) => {
+    const f = CFG.far[key], n = CFG.near[key];
+    const lo = f[0] + (n[0] - f[0]) * k;
+    const hi = f[1] + (n[1] - f[1]) * k;
+    return lo + (hi - lo) * u;
+  };
+  const at_k = (key, k) => band(key, k, Math.random());
 
   // --- setup --------------------------------------------------------------
 
@@ -177,11 +193,10 @@ const Birds = (() => {
     const dir = Math.random() < 0.5 ? 1 : -1;
     const sweep = rnd(CFG.sweep[0], CFG.sweep[1]) * dir;
 
-    // how far in the camera is, fixed at birth
+    // where this flock sits in the size and opacity ranges — kept for its
+    // life, while the ranges themselves are read fresh every frame
     const k = closeness(zoomNow);
-    const size = rnd(CFG.size[0], CFG.size[1]) * (1 - k * (1 - CFG.dimSize));
-    const fade = Math.min(1, (1 - k * (1 - CFG.dimFade))
-                             * rnd(1 - CFG.dimSpread, 1 + CFG.dimSpread));
+    const u = { size: Math.random(), fade: Math.random() };
 
     const birds = [];
     for (let i = 0; i < n; i++) {
@@ -208,8 +223,10 @@ const Birds = (() => {
                               zoomNow + rnd(-band * 0.9, band * 0.55)));
 
     return {
-      view, birds, from, sweep, size, fade,
-      clear: rnd(c.clear[0], c.clear[1]),   // closest approach to the centre
+      view, birds, from, sweep, u,
+      // closest approach to the centre. Further out as the camera comes down,
+      // so a mid-zoom flight skirts the frame rather than crossing it.
+      clear: at_k('clear', k),
       altitude,
       speed: rnd(c.speed[0], c.speed[1]),
       t: 0,
@@ -286,30 +303,32 @@ const Birds = (() => {
       f.t += dt * f.speed;
 
       if (f.t > 1.15) {
-        // the wait stretches as the sky empties, so flights get rarer on the
-        // way in rather than all stopping together at one zoom
-        const gap = CFG.gapTop;
-        flocks[i] = spawn('top', rnd(gap[0], gap[1]) / Math.max(0.06, sky));
+        // Two things stretch the wait. Coming down through the middle zooms
+        // the gaps lengthen on their own, so flights become an occasional
+        // event rather than a constant one; and near the cutoff the sky
+        // divides it further, so they stop by thinning out rather than all
+        // together at a single zoom.
+        flocks[i] = spawn('top', at_k('gap', closeness(zoom)) / Math.max(0.06, sky));
         continue;
       }
 
-      // Altitude only sets a floor. Above it a bird does not fade out — it
-      // grows, the way anything does as you come down onto it.
-      const band = CFG[f.view].spread;
-      const below = (zoom - (f.altitude - band)) / band;
+      // Altitude sets a floor: below its band a flock is not on the page yet.
+      const bandZ = CFG[f.view].spread;
+      const below = (zoom - (f.altitude - bandZ)) / bandZ;
       if (below <= 0) continue;
       const near = Math.min(1, below);
 
-      const grown = Math.min(CFG.growClamp[1],
-                    Math.max(CFG.growClamp[0],
-                             Math.pow(2, (zoom - f.altitude) * CFG.grow)));
-
+      // Size and opacity read at the CAMERA's height, not the flock's, so a
+      // bird already in the air recedes as you come down onto the city rather
+      // than looming up at you.
+      const k = closeness(zoom);
       const edge = Math.min(1, f.t / 0.05, (1.15 - f.t) / 0.08);
-      const alpha = CFG.alpha * near * Math.max(0, edge) * sky * f.fade;
+      const alpha = CFG.alpha * near * Math.max(0, edge) * sky
+                    * band('fade', k, f.u.fade);
       if (alpha <= 0.01) continue;
 
       // work out where every bird in the flock sits, and the box they cover
-      const px = f.size * grown;
+      const px = band('size', k, f.u.size);
       const draw = [];
       let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
       for (const b of f.birds) {
@@ -373,15 +392,22 @@ const Birds = (() => {
     }
     ctx.globalAlpha = 1;
 
-    // Something is always in the air — while there is a sky to be in. The gaps
-    // between flights are random and the arcs are long, so left alone the page
-    // goes quiet for a while at a time; if it has been empty for a moment,
-    // whichever flock is nearest to ready is put up now. Close in, this stops:
-    // an empty sky there is the point, not a gap to be filled.
+    // Something is always in the air at the widest view. The gaps between
+    // flights are random and the arcs are long, so left alone the page goes
+    // quiet for a while at a time; if it has been empty for a moment,
+    // whichever flock is nearest to ready is put up now.
+    //
+    // How long a moment is depends on how far in you are. Held at the wide
+    // view's third of a second it filled every gap the longer waits opened
+    // up, and the birds stayed exactly as frequent coming in as they were
+    // going out — the rule undoing the thinning. Close in it stops
+    // altogether: an empty sky there is the point, not a gap to be filled.
     lastFlew = flew;
+    const patience = CFG.idle[0]
+      + (CFG.idle[1] - CFG.idle[0]) * closeness(zoom);
     if (flew || sky < 0.6) {
       idle = 0;
-    } else if ((idle += dt) > CFG.idle) {
+    } else if ((idle += dt) > patience) {
       let best = -1, soonest = Infinity;
       for (let i = 0; i < flocks.length; i++) {
         // one that is counting down beats one already flying somewhere unseen
@@ -403,7 +429,9 @@ const Birds = (() => {
                                sprites: f.birds.map(b => b.sprite.name),
                                altitude: +f.altitude.toFixed(2),
                                t: +f.t.toFixed(2), wait: +f.wait.toFixed(1),
-                               size: Math.round(f.size), fade: +f.fade.toFixed(2),
+                               // as they are at the camera's present height
+                               size: Math.round(band('size', closeness(zoomNow), f.u.size)),
+                               fade: +band('fade', closeness(zoomNow), f.u.fade).toFixed(2),
                                clear: +f.clear.toFixed(2) })),
   });
 

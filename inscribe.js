@@ -239,6 +239,7 @@ const Inscription = (() => {
   // --- placement ----------------------------------------------------------
 
   function build(geojson, text, links) {
+    viewSig = null;   // any cached letter list belongs to the old field
     if (!atlas) buildAtlas();
     const feats = geojson.features;
     if (!feats.length) return null;
@@ -423,6 +424,8 @@ const Inscription = (() => {
   // --- per-frame ----------------------------------------------------------
 
   let lastCount = 0;
+  // the visible letter list, kept across frames — see `sig` in layer()
+  let viewSig = null, viewData = [];
 
   function layer(map, timeSec) {
     if (!L) return [];
@@ -453,20 +456,32 @@ const Inscription = (() => {
     const y0 = Math.floor((b.getSouth() - pad) / CELL);
     const y1 = Math.floor((b.getNorth() + pad) / CELL);
 
-    const data = [];
-    outer:
-    for (let gx = x0; gx <= x1; gx++) {
-      for (let gy = y0; gy <= y1; gy++) {
-        const bucket = index.get(key(gx, gy));
-        if (!bucket) continue;
-        for (const i of bucket) {
-          // a level that has not appeared yet costs nothing to skip here
-          if (alphaFor[L.lvl[i]] <= 0.01) continue;
-          if (data.length >= CFG.budget) break outer;
-          data.push(i);
+    // Held across frames. A fresh array is a fresh data reference, and deck
+    // treats that as everything having changed — every attribute of every
+    // letter rebuilt, rather than only the ones whose triggers moved. The
+    // list itself changes only when the visible cells do, or when a level of
+    // type comes in or goes out.
+    const live = alphaFor.map(a => (a > 0.01 ? 1 : 0)).join('');
+    const sig = x0 + ',' + x1 + ',' + y0 + ',' + y1 + ',' + live;
+    if (sig !== viewSig) {
+      viewSig = sig;
+      const d = [];
+      outer:
+      for (let gx = x0; gx <= x1; gx++) {
+        for (let gy = y0; gy <= y1; gy++) {
+          const bucket = index.get(key(gx, gy));
+          if (!bucket) continue;
+          for (const i of bucket) {
+            // a level that has not appeared yet costs nothing to skip here
+            if (alphaFor[L.lvl[i]] <= 0.01) continue;
+            if (d.length >= CFG.budget) break outer;
+            d.push(i);
+          }
         }
       }
+      viewData = d;
     }
+    const data = viewData;
     lastCount = data.length;
 
     const t = timeSec * CFG.speed;
