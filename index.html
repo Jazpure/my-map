@@ -75,6 +75,13 @@
   }
   #sheetclose:hover { color: #23201b; border-color: #8d8778; }
 
+  /* the way back to jasper-curtis.com: Jasper's cow, small and faint until
+     you reach for it */
+  #home { position: absolute; top: 20px; right: 22px; z-index: 10; display: block; opacity: .42; }
+  #home img { display: block; width: 24px; height: auto; }
+  #home:hover, #home:focus-visible { opacity: .9; transform: rotate(-8deg); }
+  @media (prefers-reduced-motion: no-preference) { #home { transition: opacity .2s ease, transform .2s ease; } }
+
 </style>
 </head>
 <body>
@@ -87,6 +94,8 @@
 <div id="designblock">
   <button id="designlink">design</button>
 </div>
+
+<a id="home" href="https://jasper-curtis.com/" aria-label="Jasper Curtis"><img src="cow.png" alt=""></a>
 
 <div id="sheet" hidden>
   <div id="sheetpaper">
@@ -294,13 +303,29 @@ setInterval(() => {
     panels[which].scrollTop = 0;
     sheet.hidden = false;
   };
-  const shut = () => { sheet.hidden = true; };
+  const shut = () => {
+    sheet.hidden = true;
+    // arriving on #text is a one-off: once the text is closed, the address is the map
+    if (location.hash === '#text') history.replaceState(null, '', location.pathname + location.search);
+  };
   document.getElementById('textlink').onclick = () => open('text');
   document.getElementById('designlink').onclick = () => open('design');
   document.getElementById('sheetclose').onclick = shut;
   // clicking the surround closes it; clicking the paper itself does not
   sheet.onclick = e => { if (e.target === sheet) shut(); };
   window.addEventListener('keydown', e => { if (e.key === 'Escape') shut(); });
+
+  // Arriving from jasper-curtis.com (#text), the piece opens on its text and
+  // the map is what you step out into. The essay is fetched here on its own so
+  // the sheet isn't left empty while the map data loads.
+  if (location.hash === '#text') {
+    fetch('text/essay.txt', { cache: 'no-cache' }).then(r => r.text()).then(essay => {
+      const el = panels.text;
+      if (!el.innerHTML) el.innerHTML = essay.trim().split(/\n\s*\n/)
+        .map(par => `<p>${par.trim().replace(/</g, '&lt;')}</p>`).join('');
+    }).catch(() => {});
+    open('text');
+  }
 })();
 
 // The design note. Lines beginning with `- ` are bullets, a leading `# ` is
